@@ -1,0 +1,10 @@
+{
+  "format": "tram-seo-data-age-v1",
+  "chunks": [
+    {
+      "name": "bundle.age.part000000",
+      "bytes": 12201269,
+      "sha256": "897b35c977fbb156dd0d0ddc4f3ae239c27dbca24923e0620f707be6664f16bf"
+    }
+  ]
+}
