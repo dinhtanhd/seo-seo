@@ -7,11 +7,13 @@ use App\Domain\Ingestion\Connectors\ShandianConnector;
 use App\Domain\Ingestion\Http\HttpTransport;
 use App\Domain\Ingestion\Http\SafeHttpClient;
 use App\Domain\Publishing\PublicHtmlCache;
+use App\Domain\Publishing\SiteDeliverySettings;
 use App\Domain\Sites\MovieCategoryPresetService;
 use App\Domain\Support\Access;
 use App\Domain\Support\CatalogAvailability;
 use App\Domain\Support\Conflict;
 use App\Domain\Support\Json;
+use App\Jobs\Ingestion\BackfillExistingMovies;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
@@ -218,6 +220,10 @@ final class SourceTypeService
             DB::table('sites')->where('id', $siteId)->increment('config_epoch');
             Access::audit('source.types.selection.saved', $actorId, $siteId, ['connector_id' => $sourceId, 'binding_id' => $binding->id,
                 'mapping_version' => $binding->mapping_version + 1, 'mode' => $mode, 'selected_type_ids' => $selected, 'category_map' => $categories]);
+            if ($source->status === 'active' && $binding->status === 'active' && ! empty(Json::decode($binding->auto_publish_policy)['enabled'])
+                && app(SiteDeliverySettings::class)->enabled($siteId)) {
+                BackfillExistingMovies::record($siteId, $sourceId);
+            }
 
             return DB::table('source_site_bindings')->find($binding->id);
         }, 3);

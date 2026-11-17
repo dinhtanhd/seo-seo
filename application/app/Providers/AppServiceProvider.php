@@ -6,6 +6,7 @@ use App\Domain\Support\AdminSiteLabels;
 use App\Domain\Support\SchemaAvailability;
 use App\Domain\Themes\PublicationProjectionCache;
 use App\Domain\Themes\PublicationReadMemo;
+use App\Jobs\Ingestion\BackfillExistingMovies;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Schedule;
@@ -68,6 +69,7 @@ class AppServiceProvider extends ServiceProvider
         Schedule::command('quick-apply:dispatch')->everyMinute()->withoutOverlapping(2);
         Schedule::command('site-presentation:dispatch')->everyMinute()->withoutOverlapping(2);
         Schedule::command('websites:dispatch')->everyMinute()->withoutOverlapping(2);
+        Schedule::call(BackfillExistingMovies::dispatchPending(...))->name('catalog-backfill')->everyMinute()->withoutOverlapping(2);
         Schedule::command('websites:bulk-edit-dispatch')->everyMinute()->withoutOverlapping(2);
         Schedule::command('websites:deletions-dispatch')->everyMinute()->withoutOverlapping(2);
         Schedule::command('movies:library-dispatch')->everyMinute()->withoutOverlapping(2);

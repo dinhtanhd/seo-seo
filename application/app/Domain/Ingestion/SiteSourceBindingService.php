@@ -3,9 +3,11 @@
 namespace App\Domain\Ingestion;
 
 use App\Domain\Publishing\PublicHtmlCache;
+use App\Domain\Publishing\SiteDeliverySettings;
 use App\Domain\Support\Access;
 use App\Domain\Support\Conflict;
 use App\Domain\Support\Json;
+use App\Jobs\Ingestion\BackfillExistingMovies;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\ValidationException;
@@ -51,6 +53,9 @@ final class SiteSourceBindingService
                 app(PublicHtmlCache::class)->invalidateSite($siteId);
             }
             Access::audit($binding ? 'source.binding.reattached' : 'source.binding.created', $actorId, $siteId, ['connector_id' => $sourceId, 'binding_id' => $id, 'mapping_version' => $version, 'binding_generation' => $generation, 'auto_publish_enabled' => $autoPublish]);
+            if ($autoPublish && $source->status === 'active' && app(SiteDeliverySettings::class)->enabled($siteId)) {
+                BackfillExistingMovies::record($siteId, $sourceId);
+            }
 
             return DB::table('source_site_bindings')->find($id);
         }, 3);
@@ -69,7 +74,7 @@ final class SiteSourceBindingService
 
         return DB::transaction(function () use ($siteId, $sourceId, $data, $actorId) {
             DB::table('system_settings')->where('id', 1)->sharedLock()->first();
-            DB::table('source_connectors')->where('id', $sourceId)->lockForUpdate()->first() ?? abort(404);
+            $source = DB::table('source_connectors')->where('id', $sourceId)->lockForUpdate()->first() ?? abort(404);
             $site = DB::table('sites')->where('id', $siteId)->lockForUpdate()->first() ?? abort(404);
             $binding = DB::table('source_site_bindings')->where(['connector_id' => $sourceId, 'site_id' => $siteId])->lockForUpdate()->first() ?? abort(404);
             $this->owner($site->id, $actorId);
@@ -80,6 +85,7 @@ final class SiteSourceBindingService
                 throw new Conflict('SOURCE_MAPPING_VERSION_CONFLICT', 'Liên kết nguồn đã thay đổi. Hãy tải lại.');
             }
             $policy = Json::decode($binding->auto_publish_policy);
+            $wasActive = $binding->status === 'active' && ! empty($policy['enabled']);
             $policy['enabled'] = $data['enabled'];
             if ($data['enabled']) {
                 $policy['actor_id'] = $actorId;
@@ -87,6 +93,10 @@ final class SiteSourceBindingService
             DB::table('source_site_bindings')->where('id', $binding->id)->update(['status' => $data['status'], 'mapping_version' => $binding->mapping_version + 1, 'auto_publish_policy' => Json::encode($policy)]);
             DB::table('sites')->where('id', $siteId)->increment('config_epoch');
             Access::audit('source.binding.updated', $actorId, $siteId, ['connector_id' => $sourceId, 'binding_id' => $binding->id, 'mapping_version' => $binding->mapping_version + 1, 'status' => $data['status'], 'auto_publish_enabled' => $data['enabled']]);
+            if (! $wasActive && $data['enabled'] && $data['status'] === 'active' && $source->status === 'active'
+                && app(SiteDeliverySettings::class)->enabled($siteId)) {
+                BackfillExistingMovies::record($siteId, $sourceId);
+            }
 
             return DB::table('source_site_bindings')->find($binding->id);
         }, 3);

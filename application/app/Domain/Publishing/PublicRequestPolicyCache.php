@@ -3,6 +3,7 @@
 namespace App\Domain\Publishing;
 
 use App\Domain\Advertising\AdvertisingService;
+use App\Domain\Sites\PublicSiteResolver;
 use Illuminate\Filesystem\Filesystem;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -11,6 +12,8 @@ use Throwable;
 
 final class PublicRequestPolicyCache
 {
+    public function __construct(private readonly PublicSiteResolver $sites) {}
+
     /** Recheck under the same global/site locks used by configuration writers. */
     public function warm(string $host, ?string $path = null): ?array
     {
@@ -18,12 +21,11 @@ final class PublicRequestPolicyCache
 
         return DB::transaction(function () use ($host, $path, $committed): ?array {
             DB::table('system_settings')->where('id', 1)->sharedLock()->first();
-            $siteId = DB::table('site_domains')->where('host_ascii', $host)->where('status', 'active')->value('site_id');
-            $site = $siteId ? DB::table('sites')->where('id', $siteId)->sharedLock()->first() : null;
-            if (! $site || $site->status !== 'active'
-                || ! DB::table('site_domains')->where('host_ascii', $host)->where('site_id', $siteId)->where('status', 'active')->sharedLock()->first()) {
+            $resolved = $this->sites->resolve($host, lock: true);
+            if ($resolved === null) {
                 return null;
             }
+            $site = $resolved['site'];
             $common = ['schema' => 1, 'database' => config('database.connections.pgsql.database'),
                 'host' => $host, 'site_id' => (int) $site->id];
             $response = [];
@@ -36,7 +38,7 @@ final class PublicRequestPolicyCache
                 $response = ['plain' => $advertising->csp(PublicHtmlCache::PLAIN_CSP, $site, $area),
                     'runtime' => $advertising->csp(PublicHtmlCache::RUNTIME_CSP, $site, $area)];
             }
-            if ($committed) {
+            if ($committed && ! $resolved['wildcard']) {
                 try {
                     $this->write($host, null, $common + ['kind' => 'domain']);
                     if ($path !== null) {

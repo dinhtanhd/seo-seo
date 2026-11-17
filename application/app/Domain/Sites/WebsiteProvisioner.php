@@ -14,6 +14,7 @@ use App\Domain\Support\Access;
 use App\Domain\Support\CatalogAvailability;
 use App\Domain\Support\Conflict;
 use App\Domain\Support\Json;
+use App\Jobs\Ingestion\BackfillExistingMovies;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\ValidationException;
@@ -81,6 +82,11 @@ final class WebsiteProvisioner
             $this->apply($siteId, [$home], $actorId, $idempotencyKey.':home');
             Access::audit('site.provisioned', $actorId, $siteId, ['domain' => $entry['domain'], 'delivery_mode' => $definition['delivery_mode'],
                 'initial_movie_count' => count($movies), 'source_ids' => $definition['source_ids'], 'pool_ids' => $definition['pool_ids']]);
+            if ($definition['delivery_mode'] === 'on_demand') {
+                foreach (array_keys($policies) as $sourceId) {
+                    BackfillExistingMovies::record($siteId, (int) $sourceId);
+                }
+            }
             app(PublicHtmlCache::class)->invalidateAll();
 
             return DB::table('sites')->find($siteId);

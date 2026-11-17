@@ -4,20 +4,21 @@ namespace App\Http\Middleware;
 
 use App\Domain\Publishing\PublicHtmlCache;
 use App\Domain\Publishing\PublicRequestPolicyCache;
+use App\Domain\Sites\PublicSiteResolver;
 use Closure;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use Symfony\Component\HttpFoundation\Response;
 
 final class ResolveSite
 {
+    public function __construct(private readonly PublicSiteResolver $sites) {}
+
     public function handle(Request $request, Closure $next): Response
     {
         $host = strtolower(rtrim($request->getHost(), '.'));
         $domainGate = $request->server('TRAM_DOMAIN_AUTH_REQUEST') === '1';
         $cachePolicy = $request->server('TRAM_PUBLIC_CACHE_POLICY_REQUEST') === '1';
-        $adminHosts = array_map('trim', explode(',', (string) config('tram.admin_hosts', env('ADMIN_HOSTS', 'localhost,127.0.0.1,admin.localhost'))));
-        if (in_array($host, $adminHosts, true)) {
+        if ($this->sites->isAdminHost($host)) {
             if ($cachePolicy) {
                 return $this->cachePolicy();
             }
@@ -28,13 +29,7 @@ final class ResolveSite
 
             return $next($request);
         }
-        $site = DB::table('site_domains')->join('sites', 'sites.id', '=', 'site_domains.site_id')
-            ->where('host_ascii', $host)->where('site_domains.status', 'active')->where('sites.status', 'active')
-            ->select('sites.*')->first();
         if ($cachePolicy) {
-            if (! $site) {
-                return response('', 403);
-            }
             $path = $request->server('TRAM_PUBLIC_CACHE_POLICY_PATH', '/');
             $policy = app(PublicRequestPolicyCache::class)->warm($host, is_string($path) ? $path : '/');
 
@@ -43,10 +38,14 @@ final class ResolveSite
                 ->header('X-Tram-Public-Plain-Csp', $policy['plain'])->header('X-Tram-Public-Runtime-Csp', $policy['runtime']);
         }
         if ($domainGate) {
-            return response('', $site && app(PublicRequestPolicyCache::class)->warm($host) !== null ? 204 : 403);
+            return response('', app(PublicRequestPolicyCache::class)->warm($host) !== null ? 204 : 403);
         }
-        abort_unless($site, 404, 'Website không được cấu hình cho hostname này.');
-        $request->attributes->set('public_site', $site);
+        $resolved = $this->sites->resolve($host);
+        abort_unless($resolved, 404, 'Website không được cấu hình cho hostname này.');
+        $request->attributes->set('public_site', $resolved['site']);
+        if ($resolved['wildcard']) {
+            $request->server->set('TRAM_PUBLIC_CACHE_ELIGIBLE', '0');
+        }
 
         return $next($request);
     }

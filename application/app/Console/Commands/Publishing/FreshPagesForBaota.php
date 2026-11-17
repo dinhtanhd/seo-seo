@@ -39,6 +39,7 @@ final class FreshPagesForBaota extends Command
     private const PAGE_EVENTS = [
         'publish.requested', 'publication.activated', 'public-cache.refresh', 'ingestion.committed',
         'campaign.chunk.requested', 'quick-apply.requested', 'catalog-refresh.requested', 'site-presentation.requested',
+        'catalog-backfill.requested',
     ];
 
     public function handle(): int
