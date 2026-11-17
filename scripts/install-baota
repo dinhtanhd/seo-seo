@@ -9,13 +9,16 @@ CHECK=0 FRESH_PAGES=0
 PHP_POOL=''
 CONNECTIONS_SOURCE=''
 PUBLIC_BUILD_SOURCE='' VERIFY_DATA=''
+PANEL_VHOST='' SCHEME=http
 usage() {
     cat <<'EOF'
 Cài Trạm SEO trực tiếp trên CentOS Stream 9/10 đã có BaoTa.
+  sudo bash install.sh --wizard
   sudo bash scripts/install-baota --domain admin.example.com [options]
   bash scripts/install-baota --domain admin.example.com --check
 
   --public-hosts a.example.com,b.example.com   Domain website phục vụ cùng ứng dụng
+  --panel-vhost /www/server/panel/vhost/nginx/site.conf  Gắn vào website có sẵn của BaoTa
   --php-root /www/server/php/84              PHP 8.4+ do BaoTa cài
   --php-pool www                            Chọn pool BaoTa nếu PHP có nhiều pool
   --pg-bin /path/to/bin                      Client PostgreSQL 18 có sẵn (tùy chọn)
@@ -34,13 +37,14 @@ fail() { printf 'Lỗi: %s\n' "$*" >&2; exit 1; }
 step() { printf '\n%s\n' "$*"; }
 while (($#)); do
     case "$1" in
-        --domain|--public-hosts|--php-root|--php-pool|--pg-bin|--tls-cert|--tls-key|--restore|--env-file|--storage-dir|--connections-file|--public-build-dir|--verify-data)
+        --domain|--public-hosts|--panel-vhost|--php-root|--php-pool|--pg-bin|--tls-cert|--tls-key|--restore|--env-file|--storage-dir|--connections-file|--public-build-dir|--verify-data)
             (($# >= 2)) || fail "Thiếu giá trị cho $1"
             case "$1" in
                 --domain) DOMAIN=$2;; --public-hosts) PUBLIC_HOSTS=$2;; --php-root) PHP_ROOT=$2;;
                 --php-pool) PHP_POOL=$2;; --pg-bin) PG_BIN=$2;; --tls-cert) TLS_CERT=$2;; --tls-key) TLS_KEY=$2;;
                 --connections-file) CONNECTIONS_SOURCE=$2;; --restore) RESTORE=$2;; --env-file) ENV_SOURCE=$2;; --storage-dir) STORAGE_SOURCE=$2;;
                 --public-build-dir) PUBLIC_BUILD_SOURCE=$2;; --verify-data) VERIFY_DATA=$2;;
+                --panel-vhost) PANEL_VHOST=$2;;
             esac
             shift 2;;
         --check) CHECK=1; shift;;
@@ -156,12 +160,28 @@ for name in filter(None,sys.argv[1:]):
             if not stat.S_ISDIR(mode) and not stat.S_ISREG(mode):
                 raise SystemExit('Tài nguyên build chỉ được chứa thư mục và file thường.')
 PYASSETS
-if [[ -z $TLS_CERT && -z $TLS_KEY && -f /www/server/panel/vhost/cert/$DOMAIN/fullchain.pem ]]; then
-    TLS_CERT=/www/server/panel/vhost/cert/$DOMAIN/fullchain.pem
-    TLS_KEY=/www/server/panel/vhost/cert/$DOMAIN/privkey.pem
-fi
-if [[ -n $TLS_CERT || -n $TLS_KEY ]]; then
-    [[ -f $TLS_CERT && -f $TLS_KEY ]] || fail 'Cần đủ certificate và private key HTTPS.'
+VHOST=/www/server/panel/vhost/nginx/$DOMAIN.conf
+PANEL_ARGS=() PANEL_SCHEME=()
+if [[ -n $PANEL_VHOST ]]; then
+    [[ $PANEL_VHOST =~ ^/www/server/panel/vhost/nginx/[A-Za-z0-9_.-]+\.conf$ ]] || fail 'File website phải nằm trực tiếp trong thư mục vhost/nginx của BaoTa.'
+    [[ -z $TLS_CERT && -z $TLS_KEY ]] || fail 'Cài SSL trong BaoTa khi dùng --panel-vhost.'
+    VHOST=$PANEL_VHOST
+    PANEL_ARGS=(--vhost "$VHOST" --root "$ROOT" --domain "$DOMAIN" --public-hosts "$PUBLIC_HOSTS" --php-root "$PHP_ROOT")
+    SCHEME=$(python3 "$ROOT/scripts/baota-panel-site.py" check "${PANEL_ARGS[@]}") || fail 'Kiểm tra site BaoTa để tiếp tục.'
+    [[ $SCHEME == http || $SCHEME == https ]] || fail 'Không xác định được HTTP/HTTPS của site BaoTa.'
+    PANEL_SCHEME=(--panel-scheme "$SCHEME")
+else
+    if [[ -f $VHOST ]] && grep -Eq '^[[:space:]]*#(SSL-START|PHP-INFO-START|REWRITE-START)' "$VHOST"; then
+        fail 'Domain đã là website BaoTa. Dùng --panel-vhost để giữ cấu hình website.'
+    fi
+    if [[ -z $TLS_CERT && -z $TLS_KEY && -f /www/server/panel/vhost/cert/$DOMAIN/fullchain.pem ]]; then
+        TLS_CERT=/www/server/panel/vhost/cert/$DOMAIN/fullchain.pem
+        TLS_KEY=/www/server/panel/vhost/cert/$DOMAIN/privkey.pem
+    fi
+    if [[ -n $TLS_CERT || -n $TLS_KEY ]]; then
+        [[ -f $TLS_CERT && -f $TLS_KEY ]] || fail 'Cần đủ certificate và private key HTTPS.'
+        SCHEME=https
+    fi
 fi
 if [[ -f /etc/tram-seo/project-root ]]; then
     [[ $(cat /etc/tram-seo/project-root) == "$ROOT" ]] || fail 'Installer đang quản lý một root Trạm SEO khác; dùng root đã ghi trong /etc/tram-seo/project-root.'
@@ -182,8 +202,28 @@ chmod 0700 "$CONF"
 printf '%s\n' "$ROOT" > "$CONF/project-root"
 BUILD=$(mktemp -d /var/tmp/tram-seo-install.XXXXXX)
 BUILD_ASSETS_PENDING=0
+NGINX_PENDING=0
+restore_nginx_before_install() {
+    if [[ -f $BUILD/nginx-before-install.conf ]]; then
+        cp -p -- "$BUILD/nginx-before-install.conf" "$VHOST"
+    else
+        rm -f -- "$VHOST"
+    fi
+    local file
+    for file in "${nginx_includes[@]}"; do
+        if [[ -f $BUILD/nginx-before/$file ]]; then
+            cp -p -- "$BUILD/nginx-before/$file" "$CONF/nginx/$file"
+        else
+            rm -f -- "$CONF/nginx/$file"
+        fi
+    done
+}
 cleanup_install() {
     local status=$?
+    if ((NGINX_PENDING)); then
+        restore_nginx_before_install
+        "$NGINX" -t && "$NGINX" -s reload || true
+    fi
     if ((BUILD_ASSETS_PENDING)); then
         # Vite may empty public/build before failing or being interrupted.
         # Restore the exact pre-build tree; only partially generated output is removed.
@@ -259,23 +299,20 @@ with os.fdopen(fd,'w') as stream:
     stream.write('\n'.join(f'{key}={module.dotenv_quote(value)}' for key,value in values.items())+'\n')
 PYCONN
 fi
-had_cache_include=0
-if [[ -f $CONF/nginx/public-html-cache-location.conf ]]; then
-    had_cache_include=1
-    cp -p "$CONF/nginx/public-html-cache-location.conf" "$BUILD/cache-include-before-install.conf"
-fi
+RENDER=$BUILD/rendered
 python3 "$ROOT/scripts/baota-config.py" --root "$ROOT" --domain "$DOMAIN" --public-hosts "$PUBLIC_HOSTS" \
-    --php-root "$PHP_ROOT" --php-upstream "$PHP_UPSTREAM" --connections-file "$CONF/connections.env" --tls-cert "$TLS_CERT" --tls-key "$TLS_KEY" --output "$CONF" \
-    "${NGINX_OPTIONS[@]}"
+    --php-root "$PHP_ROOT" --php-upstream "$PHP_UPSTREAM" --connections-file "$CONF/connections.env" --tls-cert "$TLS_CERT" --tls-key "$TLS_KEY" --output "$RENDER" \
+    "${NGINX_OPTIONS[@]}" "${PANEL_SCHEME[@]}"
 cp "$ROOT/application/.env" "$CONF/env-before-install"
-install -m 0600 -o www -g www "$CONF/application.env" "$ROOT/application/.env"
+install -m 0600 -o www -g www "$RENDER/application.env" "$ROOT/application/.env"
 chown www:www /var/log/tram-seo
 chmod 0750 /var/log/tram-seo
-chown -R www:www "$ROOT/application"
+# BaoTa can protect .user.ini with an immutable attribute. Its ownership belongs to the panel.
+find "$ROOT/application" -name .user.ini -prune -o -exec chown -h www:www {} +
 chmod 0600 "$ROOT/application/.env"
 chown root:www "$CONF"
 chmod 0750 "$CONF"
-install -m 0644 "$CONF"/systemd/tram-seo-{worker,crawler,scheduler}.service /etc/systemd/system/
+install -m 0644 "$RENDER"/systemd/tram-seo-{worker,crawler,scheduler}.service /etc/systemd/system/
 if command -v getenforce >/dev/null && [[ $(getenforce) != Disabled ]]; then
     command -v semanage >/dev/null || fail 'SELinux đang bật, cần dnf install -y policycoreutils-python-utils.'
     root_pattern=$(python3 -c 'import re,sys; print(re.escape(sys.argv[1]))' "$ROOT")
@@ -442,24 +479,27 @@ app_php artisan route:cache
 app_php artisan view:cache
 app_php artisan tram:health
 step 'Kết nối Nginx với PHP-FPM đang có trong BaoTa.'
-vhost=/www/server/panel/vhost/nginx/$DOMAIN.conf
-had_vhost=0
-if [[ -f $vhost ]]; then
-    had_vhost=1
-    cp -p "$vhost" "$BUILD/nginx-before-install.conf"
-    cp -p "$vhost" "$STATE/backups/nginx-$(date -u +%Y%m%dT%H%M%SZ).conf"
+nginx_includes=(public-html-cache-location.conf)
+if [[ -f $VHOST ]]; then
+    cp -p "$VHOST" "$BUILD/nginx-before-install.conf"
+    cp -p "$VHOST" "$STATE/backups/nginx-$(date -u +%Y%m%dT%H%M%SZ).conf"
 fi
-install -m 0644 "$CONF/nginx/nginx-site.conf" "$vhost"
-restore_nginx_before_install() {
-    if ((had_vhost)); then cp -p "$BUILD/nginx-before-install.conf" "$vhost"; else rm -f "$vhost"; fi
-    if ((had_cache_include)); then
-        cp -p "$BUILD/cache-include-before-install.conf" "$CONF/nginx/public-html-cache-location.conf"
-    else
-        rm -f "$CONF/nginx/public-html-cache-location.conf"
-    fi
-}
+generated_vhost=$RENDER/nginx/nginx-site.conf
+if [[ -n $PANEL_VHOST ]]; then
+    nginx_includes+=(panel-runtime.conf)
+    generated_vhost=$BUILD/panel-site.conf
+    python3 "$ROOT/scripts/baota-panel-site.py" render "${PANEL_ARGS[@]}" --generated "$RENDER/nginx/nginx-site.conf" \
+        --output "$generated_vhost" --runtime-output "$RENDER/nginx/panel-runtime.conf"
+    cmp -s -- "$VHOST" "$BUILD/nginx-before-install.conf" || fail 'Site BaoTa vừa đổi, chạy lại để dùng cấu hình mới nhất.'
+fi
+mkdir -p "$CONF/nginx" "$BUILD/nginx-before"
+for file in "${nginx_includes[@]}"; do
+    if [[ -f $CONF/nginx/$file ]]; then cp -p -- "$CONF/nginx/$file" "$BUILD/nginx-before/$file"; fi
+done
+NGINX_PENDING=1
+for file in "${nginx_includes[@]}"; do install -m 0644 "$RENDER/nginx/$file" "$CONF/nginx/$file"; done
+install -m 0644 "$generated_vhost" "$VHOST"
 if ! "$NGINX" -t; then
-    restore_nginx_before_install
     fail 'Nginx chưa nhận cấu hình mới; đã khôi phục vhost trước lượt cài.'
 fi
 systemctl enable tram-seo-worker tram-seo-crawler tram-seo-scheduler
@@ -469,15 +509,19 @@ if command -v getenforce >/dev/null && [[ $(getenforce) != Disabled ]]; then
 fi
 "$NGINX" -s reload
 ready=0
+probe=(--connect-to "$DOMAIN:80:127.0.0.1:80")
+if [[ $SCHEME == https ]]; then
+    # Health check connects only to local Nginx, even if a certificate is not trusted yet.
+    probe=(--connect-to "$DOMAIN:443:127.0.0.1:443" --insecure)
+fi
 for _attempt in {1..30}; do
-    if curl -fsS --max-time 5 -H "Host: $DOMAIN" http://127.0.0.1/readyz >/dev/null; then ready=1; break; fi
+    if curl -fsS --noproxy '*' --max-time 5 "${probe[@]}" "$SCHEME://$DOMAIN/readyz" | python3 -c 'import json,sys; result=json.load(sys.stdin); sys.exit(not all(result.get(key)=="ready" for key in ("status","database","redis")))' 2>/dev/null; then ready=1; break; fi
     sleep 1
 done
 if ((!ready)); then
-    restore_nginx_before_install
-    "$NGINX" -t && "$NGINX" -s reload
     fail "HTTP /readyz chưa đạt; đã khôi phục vhost/include cũ. Xem log PHP BaoTa và Nginx; open_basedir cần cho phép $ROOT/application."
 fi
+NGINX_PENDING=0
 healthy=0
 for _attempt in {1..35}; do
     if app_php artisan tram:health --scheduler >/dev/null 2>&1 && RUNTIME_WORKER_ROLE=publish app_php artisan tram:health --worker >/dev/null 2>&1 && RUNTIME_WORKER_ROLE=crawl app_php artisan tram:health --worker >/dev/null 2>&1; then healthy=1; break; fi
@@ -489,6 +533,6 @@ printf '%s\n' "$(date -u +%Y%m%dT%H%M%SZ)" > "$STATE/install-complete"
 if [[ -f /etc/systemd/system/tram-seo-php.service ]] && grep -Fq -- '--fpm-config /etc/tram-seo/php-fpm.conf' /etc/systemd/system/tram-seo-php.service; then
     systemctl disable --now tram-seo-php
 fi
-printf '\nCài đặt và HTTP readiness đã đạt. Admin: %s/admin\n' "$(if [[ -n $TLS_CERT ]]; then printf https; else printf http; fi)://$DOMAIN"
+printf '\nCài đặt và HTTP readiness đã đạt. Admin: %s/admin\n' "$SCHEME://$DOMAIN"
 printf 'Tạo admin mới khi cần: cd %q && sudo -u www %q artisan tram:admin-create --global\n' "$ROOT/application" "$PHP"
 printf 'Sao lưu trước migration: %s\n' "$backup"

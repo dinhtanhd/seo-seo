@@ -1,0 +1,385 @@
+#!/usr/bin/env bash
+# Prepare prerequisites using the PHP and other services already installed by BaoTa.
+set -Eeuo pipefail
+umask 077
+
+PROJECT_ROOT=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd -P)
+PHP_ROOT=/www/server/php/84
+PHP_POOL=''
+PG_BIN=''
+CHECK=0
+BUILD=''
+PHP_BACKUP=''
+RELOAD_ATTEMPTED=0
+INSTALLED_MODULES=()
+EDITED_INIS=()
+MISSING_PACKAGES=()
+
+usage() {
+    cat <<'EOF'
+Kiểm tra và bổ sung điều kiện cài Trạm SEO trên CentOS Stream 9/10 đã có BaoTa.
+  bash scripts/baota-wizard-deps [--php-root /www/server/php/84] [--php-pool www]
+                                [--pg-bin /www/server/pgsql/bin] [--check]
+
+Bổ sung công cụ hệ điều hành, pdo_pgsql, fileinfo, redis và bật OPcache có sẵn.
+Nginx, PHP 8.4+, PostgreSQL 18 và Redis được quản lý trong BaoTa Software Store.
+--check chỉ kiểm tra. Cài thiếu cần quyền root và Internet.
+EOF
+}
+
+fail() { printf 'Lỗi: %s\n' "$*" >&2; exit 1; }
+
+while (($#)); do
+    case "$1" in
+        --php-root|--php-pool|--pg-bin)
+            (($# >= 2)) || fail "Thiếu giá trị cho $1."
+            [[ -n $2 && $2 != --* ]] || fail "Thiếu giá trị cho $1."
+            case "$1" in
+                --php-root) PHP_ROOT=$2;;
+                --php-pool) PHP_POOL=$2;;
+                --pg-bin) PG_BIN=$2;;
+            esac
+            shift 2;;
+        --check) CHECK=1; shift;;
+        --help|-h) usage; exit 0;;
+        *) fail "Tham số chưa biết: $1";;
+    esac
+done
+
+[[ $(uname -s) == Linux ]] || fail 'Chạy bước này trên VPS CentOS Stream 9/10.'
+# shellcheck source=/dev/null
+source /etc/os-release
+[[ ${ID:-} == centos && ${NAME:-} == *Stream* && ${VERSION_ID%%.*} =~ ^(9|10)$ ]] || fail 'Cần CentOS Stream 9/10.'
+((CHECK || EUID == 0)) || fail 'Chạy bằng root để bổ sung thành phần còn thiếu.'
+[[ $PHP_ROOT =~ ^/www/server/php/[0-9]{2,3}$ ]] || fail 'Chọn thư mục phiên bản PHP BaoTa, ví dụ /www/server/php/84.'
+[[ -z $PG_BIN || $PG_BIN =~ ^/[A-Za-z0-9_./-]+$ ]] || fail '--pg-bin cần là đường dẫn tuyệt đối tới thư mục client PostgreSQL.'
+PHP=$PHP_ROOT/bin/php
+FPM=$PHP_ROOT/sbin/php-fpm
+FPM_CONF=$PHP_ROOT/etc/php-fpm.conf
+NGINX=/www/server/nginx/sbin/nginx
+[[ -d /www/server/panel/vhost/nginx && -x $NGINX ]] || fail 'Trong BaoTa Software Store, cài và khởi động Nginx.'
+[[ -x $PHP && -x $FPM && -f $FPM_CONF ]] || fail "Trong BaoTa Software Store, cài và khởi động PHP 8.4 hoặc chọn đúng --php-root ($PHP_ROOT)."
+PHP_VERSION=$("$PHP" -r 'if (PHP_VERSION_ID < 80401 || PHP_VERSION_ID >= 90000) exit(1); echo PHP_MAJOR_VERSION,".",PHP_MINOR_VERSION,".",PHP_RELEASE_VERSION;') || fail 'Cần PHP từ 8.4.1 và cùng major 8 với lockfile.'
+[[ $PHP_VERSION =~ ^8\.[0-9]+\.[0-9]+$ ]] || fail 'Không nhận được phiên bản PHP BaoTa hợp lệ.'
+[[ -x /www/server/redis/src/redis-server || -x /www/server/redis/bin/redis-server ]] || command -v redis-server >/dev/null || fail 'Trong BaoTa Software Store, cài và khởi động Redis.'
+id www >/dev/null 2>&1 || fail 'BaoTa chưa có user www.'
+[[ -d /run/systemd/system ]] || fail 'Cần systemd đang chạy.'
+
+queue_package() {
+    local binary=$1 package=$2
+    if ! command -v "$binary" >/dev/null; then
+        MISSING_PACKAGES+=("$package")
+    fi
+}
+
+install_packages() {
+    ((${#MISSING_PACKAGES[@]})) || return 0
+    printf 'Gói hệ điều hành còn thiếu: %s\n' "${MISSING_PACKAGES[*]}"
+    ((CHECK == 0)) || fail 'Chạy bộ cài không có --check để bổ sung công cụ.'
+    command -v dnf >/dev/null || fail 'Thiếu trình quản lý gói dnf của CentOS.'
+    dnf -y install -- "${MISSING_PACKAGES[@]}"
+    MISSING_PACKAGES=()
+}
+
+queue_package python3 python3
+queue_package curl curl
+queue_package rsync rsync
+queue_package openssl openssl
+queue_package tar tar
+queue_package xz xz
+queue_package flock util-linux
+if command -v getenforce >/dev/null && [[ $(getenforce) != Disabled ]]; then
+    queue_package semanage policycoreutils-python-utils
+fi
+install_packages
+
+pg_client_ok() {
+    local candidate=$1 version
+    [[ -x $candidate/psql && -x $candidate/pg_dump && -x $candidate/pg_restore ]] || return 1
+    version=$("$candidate/pg_dump" --version) || return 1
+    [[ $version =~ \(PostgreSQL\)\ 18\. ]]
+}
+
+if [[ -z $PG_BIN ]]; then
+    pg_candidates=(/www/server/pgsql/bin /www/server/pgsql/18/bin /usr/pgsql-18/bin /usr/bin)
+    while IFS= read -r candidate; do
+        pg_candidates+=("$(dirname -- "$candidate")")
+    done < <(find /www/server -maxdepth 5 -type f -name pg_dump 2>/dev/null)
+    for candidate in "${pg_candidates[@]}"; do
+        if pg_client_ok "$candidate"; then PG_BIN=$candidate; break; fi
+    done
+fi
+[[ -n $PG_BIN ]] && pg_client_ok "$PG_BIN" || fail 'Trong BaoTa Software Store, cài PostgreSQL 18 hoặc chọn --pg-bin tới client PostgreSQL 18 đã cài.'
+
+if ((CHECK == 0)); then
+    exec 9>/run/tram-seo-php-deps.lock
+    flock -n 9 || fail 'Một lượt chuẩn bị PHP BaoTa khác đang chạy.'
+fi
+
+check_fpm_listener() {
+    local upstream
+    upstream=$(python3 "$PROJECT_ROOT/scripts/baota-config.py" --detect-fpm --php-root "$PHP_ROOT" --php-pool "$PHP_POOL") \
+        || fail 'Xem lại PHP-FPM trong BaoTa hoặc chọn pool PHP.'
+    python3 - "$upstream" <<'PY'
+import socket
+import sys
+
+upstream = sys.argv[1]
+try:
+    if upstream.startswith('unix:'):
+        with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as connection:
+            connection.settimeout(3)
+            connection.connect(upstream[5:])
+    else:
+        host, port = upstream.rsplit(':', 1)
+        with socket.create_connection((host.strip('[]'), int(port)), timeout=3):
+            pass
+except OSError:
+    raise SystemExit('PHP-FPM chưa nhận kết nối. Khởi động PHP đã chọn trong BaoTa.')
+PY
+}
+
+check_fpm_listener
+
+# Test the CLI and FPM independently, since BaoTa can load a different ini for each.
+REQUIRED_MODULES=(pdo_pgsql intl mbstring dom xml zip pcntl bcmath redis curl fileinfo ctype openssl session tokenizer 'Zend OPcache')
+CLI_MODULES=''
+FPM_MODULES=''
+read_modules() {
+    CLI_MODULES=$("$PHP" -m) || fail 'PHP CLI không nạp được cấu hình.'
+    FPM_MODULES=$("$FPM" -m) || fail 'PHP-FPM không nạp được cấu hình.'
+}
+has_module() { grep -Fqx -- "$2" <<<"$1"; }
+module_present() {
+    has_module "$CLI_MODULES" "$1" && { [[ $1 == pcntl ]] || has_module "$FPM_MODULES" "$1"; }
+}
+
+read_modules
+AUTO_MODULES=()
+MANUAL_MODULES=()
+for module in "${REQUIRED_MODULES[@]}"; do
+    if module_present "$module"; then continue; fi
+    case "$module" in
+        pdo_pgsql|fileinfo|redis|'Zend OPcache') AUTO_MODULES+=("$module");;
+        *) MANUAL_MODULES+=("$module");;
+    esac
+done
+if ((${#MANUAL_MODULES[@]})); then
+    fail "Bật/cài các extension này cho PHP được chọn trong BaoTa: ${MANUAL_MODULES[*]}."
+fi
+"$PHP" -r '
+foreach (["proc_open", "pcntl_signal", "pcntl_alarm", "pcntl_async_signals"] as $function) {
+    if (! function_exists($function)) {fwrite(STDERR, $function." đang bị tắt hoặc chưa có\n"); exit(1);}
+}
+if (!is_string(transliterator_transliterate("Han-Latin; Latin-ASCII; Lower()", "动作片"))) {
+    fwrite(STDERR, "Intl thiếu dữ liệu ICU dùng để chuyển pinyin\n"); exit(1);
+}
+' || fail 'Kiểm tra extension Intl và hàm PHP đã cài trong BaoTa.'
+
+print_result() {
+    printf 'Đã kiểm tra Nginx BaoTa, PHP %s, client PostgreSQL 18 và chương trình Redis.\n' "$PHP_VERSION"
+    printf 'Client PostgreSQL: %s\n' "$PG_BIN"
+}
+
+if ((${#AUTO_MODULES[@]} == 0)); then print_result; exit 0; fi
+printf 'Extension PHP cần bổ sung: %s\n' "${AUTO_MODULES[*]}"
+((CHECK == 0)) || fail 'Chạy bộ cài không có --check để bổ sung extension được hỗ trợ.'
+
+PHP_REAL_ROOT=$(realpath -e -- "$PHP_ROOT")
+CLI_INI=$("$PHP" -r 'echo php_ini_loaded_file();')
+FPM_INFO=$("$FPM" -i) || fail 'Không đọc được thông tin cấu hình FPM.'
+FPM_INI=$(awk -F ' => ' '$1 == "Loaded Configuration File" {print $2}' <<<"$FPM_INFO")
+CLI_EXT_DIR=$("$PHP" -r 'echo ini_get("extension_dir");')
+FPM_EXT_DIR=$(awk -F ' => ' '$1 == "extension_dir" {print $2}' <<<"$FPM_INFO")
+unset FPM_INFO
+validate_php_path() {
+    local path=$1 resolved
+    [[ -n $path ]] || fail 'PHP không báo đường dẫn ini hoặc extension_dir đang dùng.'
+    resolved=$(realpath -e -- "$path") || fail 'Không đọc được đường dẫn ini hoặc extension_dir của PHP.'
+    [[ $resolved == "$PHP_REAL_ROOT/"* ]] || fail 'PHP có đường dẫn extension/ini nằm ngoài phiên bản BaoTa được chọn.'
+    printf '%s\n' "$resolved"
+}
+CLI_INI=$(validate_php_path "$CLI_INI")
+FPM_INI=$(validate_php_path "$FPM_INI")
+EXT_DIR=$(validate_php_path "$CLI_EXT_DIR")
+[[ $(validate_php_path "$FPM_EXT_DIR") == "$EXT_DIR" ]] || fail 'CLI và FPM dùng hai thư mục extension khác nhau. Chọn cấu hình mong muốn trong BaoTa.'
+[[ -f $CLI_INI && -f $FPM_INI && -d $EXT_DIR ]] || fail 'Không xác định được hai ini và thư mục extension hợp lệ của PHP.'
+
+reload_fpm() {
+    local version=${PHP_ROOT##*/}
+    if [[ -x /etc/init.d/php-fpm-$version ]]; then
+        "/etc/init.d/php-fpm-$version" reload
+    elif systemctl show -p CanReload --value "php-fpm-$version.service" | grep -Fxq yes; then
+        systemctl reload "php-fpm-$version.service"
+    else
+        printf 'Không tìm được cách reload PHP %s do BaoTa quản lý.\n' "$version" >&2
+        return 1
+    fi
+}
+
+cleanup() {
+    local status=$? spec current previous library
+    if ((status != 0)); then
+        for spec in "${EDITED_INIS[@]}"; do
+            current=${spec#*|}
+            previous=${spec%%|*}
+            cp -p -- "$previous" "$current" || true
+        done
+        for library in "${INSTALLED_MODULES[@]}"; do rm -f -- "$library"; done
+        if ((RELOAD_ATTEMPTED)); then reload_fpm >/dev/null 2>&1 || true; fi
+        if ((${#EDITED_INIS[@]} || ${#INSTALLED_MODULES[@]})); then
+            printf 'Chuẩn bị PHP chưa thành công. Đã phục hồi ini và gỡ các file mới của lượt này.\n' >&2
+        fi
+    fi
+    if [[ -n $BUILD ]]; then rm -rf -- "$BUILD"; fi
+}
+trap cleanup EXIT
+trap 'exit 130' INT
+trap 'exit 143' TERM
+
+BUILD=$(mktemp -d /var/tmp/tram-seo-php.XXXXXX)
+NEED_PHP_SOURCE=0
+NEED_BUILD=0
+for module in "${AUTO_MODULES[@]}"; do
+    case "$module" in
+        'Zend OPcache') [[ -f $EXT_DIR/opcache.so ]] || fail 'Cài OPcache cho PHP đã chọn trong BaoTa trước.';;
+        pdo_pgsql|fileinfo)
+            if [[ ! -f $EXT_DIR/$module.so ]]; then NEED_BUILD=1; NEED_PHP_SOURCE=1; fi;;
+        redis) if [[ ! -f $EXT_DIR/redis.so ]]; then NEED_BUILD=1; fi;;
+    esac
+done
+if ((NEED_BUILD)); then
+    [[ -x $PHP_ROOT/bin/phpize && -x $PHP_ROOT/bin/php-config ]] || fail 'Bản PHP BaoTa thiếu công cụ phpize/php-config để biên dịch extension.'
+    [[ $("$PHP_ROOT/bin/php-config" --version) == "$PHP_VERSION" ]] || fail 'php-config không khớp phiên bản PHP đã chọn.'
+    queue_package gcc gcc
+    queue_package make make
+    queue_package autoconf autoconf
+    queue_package pkg-config pkgconf-pkg-config
+    install_packages
+fi
+
+download() { curl --proto '=https' --tlsv1.2 -fsSL --retry 2 --max-time 120 "$1" -o "$2"; }
+
+if ((NEED_PHP_SOURCE)); then
+    filename=php-$PHP_VERSION.tar.xz
+    download "https://www.php.net/releases/index.php?json&version=$PHP_VERSION" "$BUILD/php-release.json"
+    digest=$(python3 - "$BUILD/php-release.json" "$PHP_VERSION" "$filename" <<'PY'
+import json
+import re
+import sys
+
+with open(sys.argv[1], encoding='utf-8') as handle:
+    release = json.load(handle)
+if release.get('version') != sys.argv[2]:
+    raise SystemExit('Không tìm thấy release PHP đúng phiên bản.')
+for item in release.get('source', []):
+    if item.get('filename') == sys.argv[3] and re.fullmatch('[a-f0-9]{64}', item.get('sha256', '')):
+        print(item['sha256'])
+        break
+else:
+    raise SystemExit('PHP không công bố SHA-256 cho đúng source archive.')
+PY
+    ) || fail 'Không xác minh được nguồn chính thức của PHP BaoTa đang chạy.'
+    if ! download "https://www.php.net/distributions/$filename" "$BUILD/$filename"; then
+        download "https://museum.php.net/php8/$filename" "$BUILD/$filename"
+    fi
+    printf '%s  %s\n' "$digest" "$BUILD/$filename" | sha256sum -c -
+    tar -xJf "$BUILD/$filename" -C "$BUILD" --no-same-owner \
+        "php-$PHP_VERSION/ext/fileinfo" "php-$PHP_VERSION/ext/pdo_pgsql"
+fi
+
+compile_extension() (
+    local name=$1 source=$2 log=$BUILD/$1-build.log
+    shift 2
+    printf 'Đang biên dịch extension %s cho PHP %s.\n' "$name" "$PHP_VERSION"
+    cd -- "$source"
+    if ! { "$PHP_ROOT/bin/phpize" && ./configure --with-php-config="$PHP_ROOT/bin/php-config" "$@" && make -j4; } >"$log" 2>&1; then
+        tail -n 20 "$log" >&2
+        fail "Không biên dịch được $name."
+    fi
+    [[ -f modules/$name.so ]] || fail "Không tìm thấy module $name đã biên dịch."
+    cp -- "modules/$name.so" "$BUILD/$name.so"
+)
+
+for module in "${AUTO_MODULES[@]}"; do
+    case "$module" in
+        fileinfo) if [[ ! -f $EXT_DIR/fileinfo.so ]]; then compile_extension fileinfo "$BUILD/php-$PHP_VERSION/ext/fileinfo" --enable-fileinfo; fi;;
+        pdo_pgsql)
+            if [[ ! -f $EXT_DIR/pdo_pgsql.so ]]; then
+                pg_config=$PG_BIN/pg_config
+                [[ -x $pg_config ]] || fail 'Thiếu pg_config và PostgreSQL 18 client headers để biên dịch pdo_pgsql.'
+                pg_lib=$("$pg_config" --libdir)
+                pg_inc=$("$pg_config" --includedir)
+                [[ $pg_lib =~ ^/[A-Za-z0-9_./-]+$ && -f $pg_inc/libpq-fe.h ]] || fail 'Không tìm thấy thư viện hoặc header PostgreSQL 18.'
+                LDFLAGS="-Wl,-rpath,$pg_lib" compile_extension pdo_pgsql "$BUILD/php-$PHP_VERSION/ext/pdo_pgsql" \
+                    --with-pdo-pgsql="$pg_config"
+            fi;;
+        redis)
+            if [[ ! -f $EXT_DIR/redis.so ]]; then
+                redis_version=6.3.0
+                redis_sha=0d5141f634bd1db6c1ddcda053d25ecf2c4fc1c395430d534fd3f8d51dd7f0b5
+                download "https://pecl.php.net/get/redis-$redis_version.tgz" "$BUILD/redis.tgz"
+                printf '%s  %s\n' "$redis_sha" "$BUILD/redis.tgz" | sha256sum -c -
+                tar -xzf "$BUILD/redis.tgz" -C "$BUILD" --no-same-owner "redis-$redis_version"
+                compile_extension redis "$BUILD/redis-$redis_version" --enable-redis
+            fi;;
+    esac
+done
+
+install -d -m 0700 /root/tram-seo-php-backups
+PHP_BACKUP=$(mktemp -d "/root/tram-seo-php-backups/$PHP_VERSION.XXXXXX")
+for module in pdo_pgsql fileinfo redis; do
+    if [[ -f $BUILD/$module.so ]]; then
+        [[ ! -e $EXT_DIR/$module.so && ! -L $EXT_DIR/$module.so ]] || fail "Extension $module vừa thay đổi. Chạy lại kiểm tra."
+        install -m 0644 -- "$BUILD/$module.so" "$EXT_DIR/$module.so"
+        INSTALLED_MODULES+=("$EXT_DIR/$module.so")
+    fi
+done
+
+# If the ini already tried to load a previously missing .so, it may work now.
+read_modules
+configure_ini() {
+    local ini=$1 modules=$2 label=$3 current backup directive temporary
+    local directives=()
+    for current in "${AUTO_MODULES[@]}"; do
+        if has_module "$modules" "$current"; then continue; fi
+        case "$current" in
+            'Zend OPcache') directive=zend_extension=opcache.so;;
+            *) directive=extension=$current.so;;
+        esac
+        directives+=("$directive")
+    done
+    ((${#directives[@]})) || return 0
+    backup=$PHP_BACKUP/$label.ini
+    cp -p -- "$ini" "$backup"
+    temporary=$(mktemp "$ini.tram-seo.XXXXXX")
+    cp -p -- "$ini" "$temporary"
+    {
+        printf '; Extensions required by Tram SEO\n'
+        printf '%s\n' "${directives[@]}"
+        printf '\n'
+        cat -- "$ini"
+    } >"$temporary"
+    EDITED_INIS+=("$backup|$ini")
+    mv -T -- "$temporary" "$ini"
+}
+
+if [[ $CLI_INI == "$FPM_INI" ]]; then
+    BOTH_MODULES=$(comm -12 <(printf '%s\n' "$CLI_MODULES" | sort -u) <(printf '%s\n' "$FPM_MODULES" | sort -u))
+    configure_ini "$CLI_INI" "$BOTH_MODULES" shared
+else
+    configure_ini "$CLI_INI" "$CLI_MODULES" cli
+    configure_ini "$FPM_INI" "$FPM_MODULES" fpm
+fi
+
+read_modules
+for module in "${REQUIRED_MODULES[@]}"; do
+    module_present "$module" || fail "PHP chưa nạp được $module ở môi trường yêu cầu."
+done
+"$FPM" -t --fpm-config "$FPM_CONF"
+RELOAD_ATTEMPTED=1
+reload_fpm
+sleep 1
+check_fpm_listener
+printf 'Đã nạp extension vào PHP BaoTa. Bản sao ini: %s\n' "$PHP_BACKUP"
+print_result

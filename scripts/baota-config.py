@@ -183,6 +183,7 @@ def main():
     parser.add_argument('--connections-file', type=Path)
     parser.add_argument('--tls-cert', default='')
     parser.add_argument('--tls-key', default='')
+    parser.add_argument('--panel-scheme', choices=('http', 'https'))
     parser.add_argument('--output', type=Path)
     args = parser.parse_args()
     if args.detect_fpm:
@@ -292,12 +293,13 @@ LimitNOFILE=65536
 [Install]
 WantedBy=multi-user.target
 ''', 0o644)
-    settings = {'APP_ENV': 'production', 'APP_DEBUG': 'false', 'APP_URL': ('https://' if tls else 'http://') + args.domain,
+    scheme = args.panel_scheme or ('https' if tls else 'http')
+    settings = {'APP_ENV': 'production', 'APP_DEBUG': 'false', 'APP_URL': f'{scheme}://{args.domain}',
         'APP_KEY': app_key, 'DB_URL': '', 'REDIS_URL': '',
         'ADMIN_HOST': args.domain, 'ADMIN_HOSTS': args.domain, 'DB_CONNECTION': 'pgsql',
         'REDIS_CLIENT': 'phpredis', **connections,
         'QUEUE_CONNECTION': 'redis', 'REDIS_QUEUE_RETRY_AFTER': '360', 'CACHE_STORE': 'redis',
-        'SESSION_SECURE_COOKIE': 'true' if tls else 'false', 'LOG_CHANNEL': 'stack', 'LOG_STACK': 'daily', 'LOG_LEVEL': 'warning'}
+        'SESSION_SECURE_COOKIE': 'true' if scheme == 'https' else 'false', 'LOG_CHANNEL': 'stack', 'LOG_STACK': 'daily', 'LOG_LEVEL': 'warning'}
     if not re.search(r'^PUBLIC_ON_DEMAND_ENABLED[ \t]*=', env, re.M):
         settings['PUBLIC_ON_DEMAND_ENABLED'] = 'true'
     # The imported .env may refer to secrets mounted only in its old runtime.

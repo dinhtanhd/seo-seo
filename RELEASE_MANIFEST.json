@@ -1,12 +1,12 @@
 {
-  "created_at": "2026-11-17T19:52:07+07:00",
-  "source_commit": "d0f5093c3e786869dd96bf2159ef2521b9c903b1",
+  "created_at": "2026-11-17T20:11:43+07:00",
+  "source_commit": "55fd999c78c5be04e045375552376df40b9edf6e",
   "includes_untracked_runtime_code": true,
   "database_included": false,
   "runtime_env_and_secret_files_included": false,
   "historical_public_build_included": true,
   "ai_instructions_and_development_docs_included": false,
-  "file_count": 832,
+  "file_count": 836,
   "files_sha256": {
     "application/.env.example": "29061ff27cd912caaf0845aa53ab8b6cc22b0d8b6e3e68988dab03de18a80d19",
     "application/.npmrc": "e968d1d336604e9986ea31306a4d9e1442f4312fca262f444384baf928d6560e",
@@ -834,11 +834,15 @@
     "infra/baota/public-html-cache-location.conf.template": "459fe2b404e5657a374f56d17be795c959b82635040f30c1f2b2103110b9e1ab",
     "infra/baota/public-html-cache-policy.conf.template": "3df15b0b98bd21d7b4e9768858b89060087d351e176c2d847c6a560f182aabc0",
     "infra/nginx/public-html-cache.conf": "2fcb6eb2a54b9dd951f1137bb98282a9bb2f52a333a001f981c02bb26182ed28",
-    "install.sh": "83f739b815b4dc9b310d4dc6d471174e2e1d312a102fb1263fd3563a16ec2e72",
-    "scripts/baota-config.py": "3cf30b19c40b51364b74dab558fcca2d2f88c303099c35014df46409cfa85ddc",
+    "install.sh": "64ae7734a4ac04b2ae9794a26de13329a603bff1464297108adb144c77d141da",
+    "scripts/baota-config.py": "c62cd85c789ecfdfc1827d0ee469ffbdb5a260091b4604f7405a86a8c5bddabd",
+    "scripts/baota-panel-site.py": "2d5a9b4377bc5fd15c8add6a2b30d882d8e55bbf5c7bc608f7ddb5bf429036e4",
     "scripts/baota-preservation.py": "17eaccb2c9cdc78a86a20d06c69d8816d680c85eda5d96f0f5ff2baf491d54d8",
-    "scripts/install-baota": "0390fd89b9ce867738e6a0a255406fc6f0e87e66e2bcc43fcca64a8b4ec44573",
-    "scripts/install-from-git": "295e30e3612c090f5f47cadac197e74791324aa2bdaa767e59acb030e8bdc9e0",
+    "scripts/baota-wizard-db.py": "954ae49396fd75f3b006ff406fffb0b6b4cf00fb30f17be1be713ad239a5dbfe",
+    "scripts/baota-wizard-deps": "338043ed920bd788285426666cdbd53cf3ce57976428a2f59ed9d5eaf5d35a86",
+    "scripts/baota-wizard.py": "ab34976f0f35661d933ed0823737596a6b8ab5492ae5630bf99dd060888beb8b",
+    "scripts/install-baota": "1b85579c78abc0c7647a4bb4de812329bbdf0f88c0cd5e104c54aeb71f8e5449",
+    "scripts/install-from-git": "b7d093fe796722695339b425b4937c7fc2b6dde2d2f0c35d3126bacb2189383e",
     ".gitignore": "98c4b6af8d61943ecdccc3f43a9225d07427dc6ea50ef7d8d2bc476b82ae36fa"
   }
 }

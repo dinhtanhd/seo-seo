@@ -2,11 +2,27 @@
 # Download a verified runtime release into a new directory, then use BaoTa's installer.
 set -Eeuo pipefail
 umask 022
+for option in "$@"; do
+    [[ $option != -- ]] || break
+    if [[ $option == --wizard ]]; then
+        [[ -t 0 && $(uname -s) == Linux && $EUID == 0 ]] || { printf 'Chạy --wizard bằng root trên VPS có terminal.\n' >&2; exit 1; }
+        # shellcheck source=/dev/null
+        source /etc/os-release
+        [[ ${ID:-} == centos && ${NAME:-} == *Stream* && ${VERSION_ID%%.*} =~ ^(9|10)$ ]] || { printf 'Cần CentOS Stream 9/10.\n' >&2; exit 1; }
+        packages=()
+        for command in python3 git; do
+            command -v "$command" >/dev/null || packages+=("$command")
+        done
+        if ((${#packages[@]})); then dnf install -y "${packages[@]}" </dev/null; fi
+        break
+    fi
+done
 command -v python3 >/dev/null || { printf 'Cần Python 3: dnf install -y python3\n' >&2; exit 1; }
 exec python3 -c 'import os; exec(compile(os.fdopen(3).read(), "<install-from-git>", "exec"))' "$@" 3<<'PY'
 import argparse
 import ctypes
 import hashlib
+import json
 import os
 from pathlib import Path, PurePosixPath
 import re
@@ -118,6 +134,55 @@ def verify(release):
         fail('Gói Git thiếu thành phần cài đặt BaoTa.')
 
 
+def update_installer(release, destination, stage):
+    # Update installation tools in an existing compatible tree without replacing application files.
+    def application_files(root):
+        manifest = json.loads((root / 'RELEASE_MANIFEST.json').read_text())
+        return {name: digest for name, digest in manifest['files_sha256'].items()
+                if name.startswith('application/') and not name.startswith('application/public/build/')}
+
+    if application_files(destination) != application_files(release):
+        fail('Phiên bản ứng dụng tại đích khác gói mới. Chọn bản phát hành cùng ứng dụng để cập nhật bộ cài.')
+    files = [Path('install.sh'), Path('infra/nginx/public-html-cache.conf')]
+    files.extend(path.relative_to(release) for path in (release / 'infra/baota').glob('*.template'))
+    files.extend(Path('scripts') / name for name in ('install-baota', 'install-from-git', 'baota-config.py',
+        'baota-preservation.py', 'baota-panel-site.py', 'baota-wizard.py', 'baota-wizard-deps', 'baota-wizard-db.py'))
+    backups = stage / 'previous-installer'
+    for relative in files:
+        target = destination / relative
+        for directory in (destination, *[destination / parent for parent in relative.parents if parent != Path('.')]):
+            if directory.is_symlink() or not directory.is_dir() or directory.stat().st_uid != os.geteuid() or directory.stat().st_mode & 0o022:
+                fail('Thư mục bộ cài cần thuộc root và không cho nhóm hoặc người khác ghi.')
+        if target.is_symlink() or (target.exists() and not target.is_file()) or not (release / relative).is_file():
+            fail('Thiếu file bộ cài hoặc file đích không an toàn: ' + str(relative))
+        if target.is_file():
+            previous = backups / relative
+            previous.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(target, previous)
+
+    def replace(source, target):
+        with tempfile.NamedTemporaryFile(prefix='.tram-update-', dir=target.parent, delete=False) as temporary:
+            pending = Path(temporary.name)
+        try:
+            shutil.copy2(source, pending)
+            pending.replace(target)
+        finally:
+            pending.unlink(missing_ok=True)
+
+    updated = []
+    try:
+        for relative in files:
+            replace(release / relative, destination / relative)
+            updated.append(relative)
+    except (OSError, KeyboardInterrupt):
+        for relative in reversed(updated):
+            if (backups / relative).is_file():
+                replace(backups / relative, destination / relative)
+            else:
+                (destination / relative).unlink()
+        raise
+
+
 def publish(source, destination):
     # Exclusive rename prevents even an empty directory created concurrently from being replaced.
     library = ctypes.CDLL(None, use_errno=True)
@@ -142,7 +207,9 @@ def main():
                'Tham số sau -- chuyển nguyên vẹn đến install-baota; không thay worker PHP và không xóa dữ liệu mặc định.')
     parser.add_argument('--repo', required=True, help='URL HTTPS không có credential, hoặc URL SSH')
     parser.add_argument('--ref', default='main', help='Branch, tag hoặc commit SHA (mặc định: main)')
-    parser.add_argument('--dest', default='/www/wwwroot/tram-seo', help='Thư mục mới, đường dẫn tuyệt đối')
+    parser.add_argument('--dest', help='Thư mục mới, đường dẫn tuyệt đối')
+    parser.add_argument('--wizard', action='store_true', help='Hỏi đường dẫn, môi trường, database, bản nhập và admin')
+    parser.add_argument('--update-installer', action='store_true', help='Cập nhật bộ cài trong thư mục Trạm SEO đã có')
     parser.add_argument('--download-only', action='store_true', help='Chỉ tải và kiểm tra gói, chưa chạy cài đặt')
     argv = sys.argv[1:]
     split = argv.index('--') if '--' in argv else len(argv)
@@ -151,10 +218,23 @@ def main():
     repository = repository_url(options.repo)
     if not re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9_./-]*', options.ref) or '..' in options.ref:
         fail('--ref không hợp lệ; chỉ dùng branch, tag hoặc commit SHA.')
-    if not re.fullmatch(r'/[A-Za-z0-9_./-]+', options.dest) or any(part in ('.', '..') for part in options.dest.split('/')):
+    default_dest = ('/home/www/wwwroot/tram-seo' if options.wizard and Path('/home/www/wwwroot').is_dir()
+                    else '/www/wwwroot/tram-seo')
+    if options.download_only and (options.wizard or options.update_installer):
+        fail('--download-only dùng riêng để tải gói vào một thư mục mới.')
+    if options.update_installer and os.geteuid() != 0:
+        fail('Chạy bằng root để cập nhật bộ cài hiện có.')
+    destination_arg = options.dest
+    if destination_arg is None:
+        destination_arg = input(f'Thư mục cài đặt [{default_dest}]: ').strip() if options.wizard else ''
+        destination_arg = destination_arg or default_dest
+    if not re.fullmatch(r'/[A-Za-z0-9_./-]+', destination_arg) or any(part in ('.', '..') for part in destination_arg.split('/')):
         fail('--dest cần đường dẫn tuyệt đối không có khoảng trắng hoặc thành phần . / ...')
-    destination = Path(options.dest)
-    if os.path.lexists(destination):
+    destination = Path(destination_arg)
+    if options.update_installer:
+        if not destination.is_dir() or destination.is_symlink() or not (destination / 'application/artisan').is_file():
+            fail('--update-installer cần thư mục Trạm SEO đã có.')
+    elif os.path.lexists(destination):
         fail('Đích đã tồn tại; dừng để giữ nguyên code và dữ liệu. Chọn thư mục mới bằng --dest.')
     if not destination.parent.is_dir():
         fail('Thư mục cha của --dest chưa tồn tại. Tạo thư mục cha trước khi cài.')
@@ -178,13 +258,20 @@ def main():
             run_git(['archive', '--format=tar', commit], repository_dir, stream)
         unpack(archive, release)
         verify(release)
-        publish(release, destination)
+        if options.update_installer:
+            update_installer(release, destination, stage)
+        else:
+            publish(release, destination)
     print('Đã kiểm tra gói. Commit Git: ' + commit, flush=True)
     print('Thư mục: ' + str(destination), flush=True)
+    if options.update_installer and not options.wizard:
+        print('Đã cập nhật bộ cài. Chạy bash install.sh --wizard để tiếp tục.', flush=True)
+        return 0
     if options.download_only:
         print('Chỉ tải code; chưa cài dịch vụ hoặc thay đổi dữ liệu.', flush=True)
         return 0
-    result = subprocess.run(['bash', str(destination / 'scripts/install-baota'), *native], cwd=destination)
+    installer = [str(destination / 'install.sh'), '--wizard'] if options.wizard else [str(destination / 'scripts/install-baota')]
+    result = subprocess.run(['bash', *installer, *native], cwd=destination)
     if result.returncode:
         print('Cài đặt chưa thành công. Code đã kiểm tra được giữ tại ' + str(destination) +
               '; sửa điều kiện còn thiếu rồi chạy lại scripts/install-baota tại đó.', file=sys.stderr)
@@ -193,7 +280,7 @@ def main():
 
 try:
     sys.exit(main())
-except (ValueError, OSError, tarfile.TarError) as error:
+except (ValueError, OSError, EOFError, KeyError, tarfile.TarError) as error:
     print('Lỗi: ' + str(error), file=sys.stderr)
     sys.exit(1)
 PY
