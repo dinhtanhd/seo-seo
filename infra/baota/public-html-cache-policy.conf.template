@@ -1,7 +1,5 @@
 location = /__tram_public_cache_policy {
     internal;
-    fastcgi_buffer_size 16k;
-    fastcgi_buffers 8 16k;
     auth_request off;
     fastcgi_pass @PHP_UPSTREAM@;
     fastcgi_pass_request_body off;
@@ -37,8 +35,6 @@ location = /__tram_public_html_cache/advertising {
     auth_request_set $tram_public_policy_cache $upstream_http_x_tram_policy_cache;
     error_page 403 =421 @tram_domain_denied;
     root @ROOT@/application/storage/app/public-html;
-    fastcgi_buffer_size 16k;
-    fastcgi_buffers 8 16k;
     fastcgi_intercept_errors on;
     error_page 404 = @tram_public_html_cache_miss;
     include /www/server/nginx/conf/fastcgi_params;
@@ -79,8 +75,6 @@ location = /__tram_public_runtime_html_cache/advertising {
     auth_request_set $tram_public_policy_cache $upstream_http_x_tram_policy_cache;
     error_page 403 =421 @tram_domain_denied;
     root @ROOT@/application/storage/app/public-html;
-    fastcgi_buffer_size 16k;
-    fastcgi_buffers 8 16k;
     fastcgi_intercept_errors on;
     error_page 404 = @tram_public_html_cache_miss;
     include /www/server/nginx/conf/fastcgi_params;

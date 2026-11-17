@@ -11,6 +11,10 @@ server {
     charset utf-8;
     set $tram_cache_database @DB_NAME@;
     client_max_body_size 24m;
+    # Override the buffer sizes together because BaoTa sets them at http scope.
+    fastcgi_buffer_size 16k;
+    fastcgi_buffers 8 16k;
+    fastcgi_busy_buffers_size 32k;
     access_log /www/wwwlogs/@DOMAIN@.log;
     error_log /www/wwwlogs/@DOMAIN@.error.log;
 
@@ -42,8 +46,6 @@ server {
     }
     include /etc/tram-seo/nginx/public-html-cache-location.conf;
     location = /index.php {
-        fastcgi_buffer_size 16k;
-        fastcgi_buffers 8 16k;
         if (-f @ROOT@/application/storage/app/public-html$tram_public_runtime_advertising_cache_file) { rewrite ^ /__tram_public_html_cache last; }
         if (-f @ROOT@/application/storage/app/public-html$tram_public_advertising_cache_file) { rewrite ^ /__tram_public_html_cache last; }
         if (-f @ROOT@/application/storage/app/public-html$tram_public_runtime_cache_file) { rewrite ^ /__tram_public_html_cache last; }

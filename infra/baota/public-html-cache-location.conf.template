@@ -4,8 +4,6 @@ location @tram_domain_denied { return 421; }
 location @tram_public_html_cache_miss {
     # Laravel resolves the current host and site when the cached file cannot be served.
 @CACHE_AUTH_OFF@
-    fastcgi_buffer_size 16k;
-    fastcgi_buffers 8 16k;
     include /www/server/nginx/conf/fastcgi_params;
     fastcgi_param HTTPS $https if_not_empty;
     fastcgi_param SCRIPT_FILENAME @ROOT@/application/public/index.php;
@@ -27,8 +25,6 @@ location = /__tram_public_html_cache {
     if (-f $document_root$tram_public_advertising_cache_file) { return 419; }
     if (-f $document_root$tram_public_runtime_cache_file) { return 418; }
     try_files $tram_public_cache_file @tram_public_html_cache_miss;
-    fastcgi_buffer_size 16k;
-    fastcgi_buffers 8 16k;
     fastcgi_intercept_errors on;
     error_page 404 = @tram_public_html_cache_miss;
     include /www/server/nginx/conf/fastcgi_params;
@@ -63,8 +59,6 @@ location = /__tram_public_html_cache {
 location = /__tram_public_runtime_html_cache {
     internal;
     root @ROOT@/application/storage/app/public-html;
-    fastcgi_buffer_size 16k;
-    fastcgi_buffers 8 16k;
     fastcgi_intercept_errors on;
     error_page 404 = @tram_public_html_cache_miss;
     include /www/server/nginx/conf/fastcgi_params;
