@@ -1,5 +1,5 @@
 {
-  "created_at": "2026-11-17T20:39:36+07:00",
+  "created_at": "2026-11-17T21:25:54+07:00",
   "source_commit": "341d0ff73ba92c6d76787bddd7737241c278b215",
   "includes_untracked_runtime_code": true,
   "database_included": false,
@@ -233,7 +233,7 @@
     "application/config/app.php": "b4b25e15efa76846a7f2e19fd1044fec4945e4e928c4098126a2b0042b034383",
     "application/config/auth.php": "c7e204e9785c9f596d66fb884b493f658f2327f157646bdb4088efd6b3a7773f",
     "application/config/cache.php": "5030cdf171704e58b96f2cf17f1c6d5921b27d5c63c2cefb730eeb2da49a8240",
-    "application/config/database.php": "331d327bcca19d117e4ebb7076bc7a099f102ec34f2d2018f9654dd7149cb1a6",
+    "application/config/database.php": "c009fffe8eade0835c055b4790676d753164ee813d255dd9c4a8bcd7b4cdec0c",
     "application/config/filesystems.php": "ba7060d7a23e490c3ce830656f6d24ad3ccf5b868e3293f2a12e411959dc5635",
     "application/config/logging.php": "beb1ffd0db910f6f0b4f75214c3d5aa385d692733ece8a450f4c169d2c99ce38",
     "application/config/mail.php": "c43ff49a31c5f32ce21eb7159f2a4b3cd2f4074eaed5838d265646dbfedd3474",
@@ -845,5 +845,6 @@
     "scripts/install-baota": "1b85579c78abc0c7647a4bb4de812329bbdf0f88c0cd5e104c54aeb71f8e5449",
     "scripts/install-from-git": "540c89db67cd20325d1f1289678e0756c85de821685a1efd9d1825a9978036f1",
     ".gitignore": "98c4b6af8d61943ecdccc3f43a9225d07427dc6ea50ef7d8d2bc476b82ae36fa"
-  }
+  },
+  "base_runtime_commit": "c0f92343589fd6be28df96799d9ad17f9579138b"
 }
