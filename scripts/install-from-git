@@ -147,6 +147,8 @@ def update_installer(release, destination, stage):
     files.extend(path.relative_to(release) for path in (release / 'infra/baota').glob('*.template'))
     files.extend(Path('scripts') / name for name in ('install-baota', 'install-from-git', 'baota-config.py',
         'baota-preservation.py', 'baota-panel-site.py', 'baota-wizard.py', 'baota-wizard-deps', 'baota-wizard-db.py'))
+    if (release / 'scripts/baota-data-bundle.py').is_file():
+        files.append(Path('scripts/baota-data-bundle.py'))
     backups = stage / 'previous-installer'
     for relative in files:
         target = destination / relative
