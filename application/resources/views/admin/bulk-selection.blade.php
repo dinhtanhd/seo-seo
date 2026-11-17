@@ -1,0 +1,2 @@
+<input type="hidden" name="scope_selected" value="1"><input type="hidden" name="site_ids_json" value="{{ json_encode($siteIds) }}"><input type="hidden" name="selection_mode" :value="selectionMode"><input type="hidden" name="page_ids_json" :value="JSON.stringify(selected)">
+@foreach(['q','page_type','status','category_id'] as $filter)<input type="hidden" name="{{ $filter }}" value="{{ $filters[$filter] }}">@endforeach

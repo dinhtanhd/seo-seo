@@ -1,0 +1,43 @@
+{
+  "schema_version": 2,
+  "slug": "fscclp-com",
+  "name": "飞飞影视 · FSCclp Mobile",
+  "description": "Giao diện chuyển từ fscclp.com bằng UA mobile: giữ bố cục năm trang, CSS/font/UI; dữ liệu phim, poster và liên kết dùng dữ liệu Trạm SEO.",
+  "author": "Trạm SEO",
+  "runtime": {
+    "profile": "ewave-original-v1",
+    "stylesheets": [
+      "default8/assets/css/ewave-plugins.css",
+      "default8/assets/css/ewave-ui.css",
+      "default8/assets/css/style.css",
+      "default8/assets/js/layer_theme/default/layer.css"
+    ],
+    "scripts": [
+      "default8/assets/js/jquery.min.js",
+      "default8/assets/js/ewave-plugins.js",
+      "js/tram-imported-runtime.js"
+    ],
+    "view_scripts": {},
+    "view_stylesheets": {},
+    "icons": [],
+    "meta": [
+      {
+        "http-equiv": "Cache-Control",
+        "content": "no-transform"
+      },
+      {
+        "http-equiv": "Cache-Control",
+        "content": "no-siteapp"
+      },
+      {
+        "name": "renderer",
+        "content": "webkit"
+      },
+      {
+        "name": "applicable-device",
+        "content": "pc,mobile"
+      }
+    ],
+    "viewport": "width=device-width, initial-scale=1, maximum-scale=1"
+  }
+}

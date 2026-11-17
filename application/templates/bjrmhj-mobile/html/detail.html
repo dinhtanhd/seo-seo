@@ -1,0 +1,273 @@
+<div data-tram-page="detail" data-tram-title="{{content.title}}" data-tram-detail="{{url.detail}}"></div>
+    <div class=" site-main spimes-container">
+        
+        <!--头部 开始-->
+            <div class=" top-bar ewave-headroom head-wrapper">
+                <div class=" container clearnav secnav">
+                   <div class=" m_nav-list hide-pc"> <a href="#tram-runtime-state" data-toggle="offcanvas" class=" lines js-m-navlist"> <span class=" line first-line"></span> <span class=" line second-line"></span> <span class=" line third-line"></span> </a> </div>
+                   <div class=" top-bar-left pull-left navlogo"> <a href="{{url.home}}" class=" logo box">{{site.name}}</a> </div>
+                   <div class=" search-warp clearfix">
+                      <form method="get" action="{{url.search}}">
+                         <div class=" search-area">
+                            <div class=" ewave-dropdown ewave-click-dropdown ewave-search-dropdown">
+                               <span class=" ewave-search-dropdown-text">视频</span>&nbsp;<i class=" fa fa-caret-down"></i>
+                               <div class=" ewave-dropdown-box">
+                                  <ul>
+                                     <li><a href="#tram-runtime-state">视频</a></li>
+                                     <li><a href="#tram-runtime-state">文章</a></li>
+                                     <li><a href="#tram-runtime-state">明星</a></li>
+                                  </ul>
+                               </div>
+                            </div>
+                            <input class=" search-input" id="soblur" placeholder="请输入关键词" type="text" name="q" autocomplete="off" required value="{{search.query}}" aria-label="搜索影片">
+                            <ul class=" dropdown-menu top_so">
+                               {{#each recommended_movies}}<li><a  href="{{movie.path}}" title="{{movie.title}}"><span class="rank">{{movie.rank}}</span><i class="view">{{movie.remarks}}</i>{{movie.title}}</a></li>{{/each}}
+                            </ul>
+                         </div>
+                         <button class=" showhide-search search-form-input" type="submit"><i class=" fa fa-search"></i></button>
+                      </form>
+                   </div>
+                   <div class=" top-bar-right pull-right text-right mobs">
+                      <div class=" top-admin">
+                         <a href="#tram-runtime-state" id="soStats" class=" sostats_click"><i id="soico" class=" fa fa-search"></i>&nbsp;搜索</a>
+                         <div class=" ewave-history"></div>
+                         <input class=" wb-switch wb-no" type="checkbox" data-tram-action="skin">
+                         <div class=" navbar-search socollapse sostats" id="navbar-search">
+                            <div class=" container">
+                               <form method="get" role="search" id="searchform" class=" searchform shadow" action="{{url.search}}">
+                                  <div class=" input-group2">
+                                     <div class=" ewave-dropdown ewave-click-dropdown ewave-search-dropdown mobile">
+                                        <span class=" ewave-search-dropdown-text">视频</span>&nbsp;<i class=" fa fa-caret-down"></i>
+                                        <div class=" ewave-dropdown-box">
+                                           <ul>
+                                              <li><a>视频</a></li>
+                                              <li><a>文章</a></li>
+                                              <li><a>明星</a></li>
+                                           </ul>
+                                        </div>
+                                     </div>
+                                     <input type="text" name="q" placeholder="请输入关键词" class=" form-control" required autocomplete="off" value="{{search.query}}" aria-label="搜索影片">
+                                     <div class=" input-group-append">
+                                        <button class=" btn btn-nostyle" type="submit"><i class=" fa fa-search"></i></button>
+                                     </div>
+                                  </div>
+                               </form>
+                            </div>
+                            <div class=" navbar-search-close"></div>
+                         </div>
+                      </div>
+                   </div>
+                </div>
+                <div class=" new-header container clearnav hidden-xs">
+                    <div class=" white-block"></div>
+                    <div class=" white-block white-block2"></div>
+                    <div class=" top-bar-left navs">
+                      <nav class=" top-bar-navigation ewave-swiper ewave-swiper-nav">
+                         <ul class=" top-bar-menu swiper-wrapper"><li class="menu-item"><a href="{{url.home}}">首页</a></li>{{#each sections}}<li class=" swiper-slide menu-item active drop-down">
+                                <a href="{{section.path}}"><i class="fa fa-caret-down"></i>{{section.name}}</a>
+                                <ul class=" aui-nav-dow">{{#each section.children}}<li><a href="{{sub_category.path}}">{{sub_category.name}}</a></li>{{/each}}</ul>
+                            </li>{{/each}}</ul>
+                      </nav>
+                    </div>
+                    <div class=" top-bar-right text-right hidden-sm">
+                      <div class=" top-admin">
+                         <div class=" ewave-history"></div>
+                         <input class=" wb-switch" type="checkbox" data-tram-action="skin">
+                      </div>
+                    </div>
+                </div>
+                <div id="percentageCounter"></div>
+            </div>
+            
+            <div class=" sidebar-offcanvas hide-pc">
+                <div class=" mobile-sidebar-column">
+                    <ul class=" mobile-sidebar-menu ultop"><li class="menu-item"><a href="{{url.home}}">首页</a></li>{{#each sections}}<li class=" menu-item active">
+                            <a href="{{section.path}}" title="电影"><i class=" top-type-icon fa fa-caret-right"></i>{{section.name}}</a>
+                            <ul class=" sub-menu">{{#each section.children}}<li class=" menu-item"><a href="{{sub_category.path}}" title="{{sub_category.name}}">{{sub_category.name}}</a></li>{{/each}}</ul>
+                        </li>{{/each}}</ul>
+                </div>
+            </div>
+            <div class=" overlay-off-navbar"></div>
+            
+            <div class=" top-bar-placeholder head-placeholder gap"></div>
+            <!--头部 结束-->        
+        
+        <div class=" container">
+            <main class=" site-main">
+                <div class=" contpost gap">
+                    <div class=" position-link clearfix"><a href="{{url.home}}">首页</a>&nbsp;»&nbsp;<a href="{{category.path}}">{{category.name}}</a>&nbsp;»&nbsp;{{content.title}}</div>
+                </div>
+                
+                <div class=" contpost2 gap">
+                    <div class=" row">
+                        <div class=" col-md-9">
+                            <article class=" post detail-post clearfix">
+                                <div class=" block-image feaimg">
+                                    <div class=" block-fea lazyload" data-original="{{content.poster_url}}" title="{{content.title}}"><i class=" mask"></i> <span class=" vodlist_top"><em class=" voddate voddate_year">{{content.genre}}</em></span> </div>
+                                </div>
+                                
+                                <div class=" block-info detail-info">
+                                    <header class=" mb-0">
+                                        <h1 class=" detail-info-title text-row-2">{{content.title}}</h1>
+                                        <span style="display: none;" id="titles_0_data">{{content.title}}</span>
+                                    </header>
+                                    <div class=" detail-info-text ewave-collapse ewave-collapse-xs ewave-collapse-sm">
+                                        <p class=" mb-0"><span>演员：</span>{{content.actors}}</p>
+                                        <div class=" ewave-collapse-item">
+                                            <p class=" mb-0"><span>导演：</span>{{content.director}}</p>
+                                            <ul class=" row">
+                                                <li class=" col-xs-12 col-md-4">
+                                                    <p class=" mb-0"><span>类型：</span>{{content.genre}}</p>
+                                                </li>
+                                                <li class=" col-xs-12 col-md-4">
+                                                    <p class=" mb-0"><span>状态：</span>{{content.remarks}}</p>
+                                                </li>
+                                                <li class=" col-xs-12 col-md-4">
+                                                    <p class=" mb-0"><span>更新时间：</span>{{content.updated_at}}</p>
+                                                </li>
+                                            </ul>
+                                            
+                                            <ul class=" row">
+                                                <li class=" col-xs-12 col-md-4">
+                                                    <p class=" mb-0"><span>地区：</span>{{content.area}}</p>
+                                                </li>
+                                                <li class=" col-xs-12 col-md-4">
+                                                    <p class=" mb-0"><span>年份：</span>{{content.year}}</p>
+                                                </li>
+                                                <li class=" col-xs-12 col-md-4">
+                                                    <p class=" mb-0"><span>语言：</span>{{content.language}}</p>
+                                                </li>
+                                            </ul>
+                                            <p class=" mb-0"><span>剧情：</span>{{content.body_excerpt}}</p>
+                                        </div>
+                                        <a class=" visible-xs visible-sm text-center ewave-collapse-toggle" href="#tram-runtime-state"><i class=" fa fa-angle-down"></i></a>
+                                    </div>
+                                </div>
+                                <h3>
+                                    <a class=" play-btn" href="{{url.play}}"><i class=" fa fa-play-circle-o"></i>&nbsp;播放<span class=" hidden-xs">视频</span></a>
+                                </h3>
+                            </article>
+                        </div>
+                        
+                        <div class=" col-md-3">
+                            <div class=" detail-star">
+                                <h3>网友评分<small class=" pull-right"><span class="xcwjye ewave-star-count">—</span>人已评分</small></h3>
+                                <div class=" ewave-star-box center-block">
+                                    <div class=" row clearfix">
+                                        <div class=" col-xs-6">
+                                            <ul class=" ewave-star clearfix" data-star="{{content.score}}">
+                                            </ul>
+                                        </div>
+                                        <h4 class=" ewave-star-text col-xs-3"></h4>
+                                        <h4 class=" ewave-star-num col-xs-3 text-theme">{{content.score}}</h4>
+                                    </div>
+                                    
+                                    <div class=" text-center ewave-detail-tool">
+                                        <a class="LcWYVI ewave-digg" href="#tram-runtime-state"><i class=" fa fa-thumbs-o-up">&nbsp;赞&nbsp;<span class="UyJnVA ewave-digg-num">—</span></i></a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class=" row">
+                    <div class=" col-md-9">
+                        <div class=" contpost gap">
+                            <div class="z8UYbw playlist-box">
+                                <header class=" clearfix">
+                                    <div class=" widget-list-title"><i class=" fa fa-list"></i>&nbsp;播放列表</div>
+                                    <a class=" header-more ewave-sort" href="#tram-runtime-state" data-target=".ewave-playlist-sort-content:visible"><i class=" fa fa-sort-amount-asc"></i>&nbsp;排序</a>
+                                </header>
+                                <div class=" ewave-playlist-tab playlist-tab ewave-swiper ewave-swiper-nav">
+                                    <ul class=" swiper-wrapper">
+                                        <li class=" swiper-slide ewave-tab active" data-target="#ewave-playlist-1"><a href="#tram-runtime-state">播放列表</a></li>
+                                    </ul>
+                                </div>
+                                
+                                <div>
+                                    <ul class=" row ewave-tab-content ewave-playlist-content ewave-playlist-sort-content playlist" id="ewave-playlist-1">{{#each episodes}}<li class=" col-xs-4 col-sm-3 col-md-2 ewave-playlist-item"><a class=" text-overflow" href="{{episode.play_url}}">{{episode.title}}</a></li>{{else}}<li class="ewave-playlist-item">暂无播放来源</li>{{/each}}</ul>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class=" contpost gap" id="desc">
+                            <article class=" post">
+                                <header class=" clearfix">
+                                    <div class=" widget-list-title"><i class=" fa fa-file-text-o"></i>&nbsp;剧情简介</div>
+                                </header>
+                                <div class=" show_text">
+                                    <div class=" entry-content clearfix">{{content.body_html}}</div>
+                                </div>
+                            </article>
+                        </div>
+                        
+                        <div class=" contpost gap">
+                            <div class="UoQ2MF index-vodlist">
+                                <header class=" clearfix">
+                                    <div class=" widget-list-title"><i class=" fa fa-tv"></i>&nbsp;<span>推荐视频</span></div>
+                                </header>
+                                <div class=" video-content"><div class=" row movie-grid">
+                                        {{#each recommended_movies}}<div class=" col-xs-4 col-md-3 movie-grid">
+                                            <div class=" video-content-item">
+                                                <article class=" post-list video-list feaimg">
+                                                    <a class=" video-img lazyload" href="{{movie.path}}" data-original="{{movie.poster_url}}" title="{{movie.title}}">
+                                                        <i class=" mask"></i> <span class=" vodlist_top"><em class=" voddate voddate_year">{{movie.year}}</em></span>
+                                                        <div class=" video-icon"><i class=" fa fa-play-circle-o"></i></div>
+                                                        <header class=" video-header text-center"> <span class=" video-title text-nowrap ml-xs-0 mr-xs-0">{{movie.remarks}}</span> </header>
+                                                    </a>
+                                                </article>
+                                                <p class=" video-name"> <a class=" text-overflow" href="{{movie.path}}" title="{{movie.title}}">{{movie.title}}</a> </p>
+                                                <p class=" video-actor text-muted text-overflow">{{movie.actors}}</p>
+                                            </div>
+                                        </div>{{/each}}
+                                    </div></div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!--右侧边栏-->
+                    <div class=" col-md-3 hidden-xs hidden-sm widget-area ewave-sticky" style="top:65px;">
+                        <section class=" widget widget_kuaixun">
+                            <h4 class=" widget-title">相关推荐</h4>{{#each compact_weekly_movies}}<div class=" list-rounded my-n2">
+                                <div class=" py-2">
+                                    <div class="ricon_rank {{movie.rank_class}}">{{movie.rank}}</div>
+                                    <div class=" ranking-item clearfix">
+                                        <div class=" ranking-item-cover">
+                                            <a class=" ewave-img-wrapper lazyload" href="{{movie.path}}" data-original="{{movie.poster_url}}" title="{{movie.title}}"></a>
+                                        </div>
+                                        <div class=" ranking-item-info">
+                                            <h4><a class=" text-overflow" href="{{movie.path}}" title="{{movie.title}}">{{movie.title}}</a></h4>
+                                            <p class=" ranking-actor text-muted">{{movie.actors}}</p>
+                                            <p class=" text-overflow text-muted">热度：<i class="fa fa-fire"></i>&nbsp;—</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>{{/each}}
+                            <ul>{{#each compact_extra_movies}}<li class=" ranking-text-item text-overflow"><em>{{movie.rank}}.</em><a href="{{movie.path}}" title="{{movie.title}}"><span class="pull-right text-muted">{{movie.remarks}}</span>{{movie.title}}</a></li>{{/each}}</ul>
+                        </section>
+                    </div>
+                </div>
+            </main>
+        </div>
+        
+        <!--底部 开始-->
+            <section class="tram-friend-links tram-friend-links-fallback" data-tram-friend-links="true" aria-label="友情链接"><h2>友情链接</h2><ul>{{#each friend_links}}<li><a href="{{friend_link.url}}" title="{{friend_link.text}}" target="_blank" rel="noopener noreferrer">{{friend_link.text}}</a></li>{{/each}}</ul></section><footer class="site-footer fsi">
+                <div class="site-info clearfix">
+                    <div class="container text-center">
+                        <div class="footer-l-top">
+                            <p><a href="{{url.list}}">网站地图</a></p>
+                            </div>
+                            <div class="footer-l-btm">
+                            <p>本网站只提供web页面服务，通过链接的方式提供相关内容（所有视频内容收集于各大视频网站），本站不对链接内容具有进行编辑、整理、修改等权利</p>
+                            <p>©copyright 2020-2026 {{site.name}}</p>
+                            <p></p>
+                        </div>
+                    </div>
+                </div>
+            </footer>
+            <div class="footer-fixed">
+                <a class="hide" id="scroll-to-top" href="#tram-runtime-state"><span class="fa fa-angle-up" title="返回顶部"></span></a>
+            </div>
+            
+            <!--底部 结束-->    </div>

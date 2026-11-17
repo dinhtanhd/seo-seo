@@ -1,0 +1,98 @@
+/* General Page Styles */
+.stui-page {
+    margin-bottom: 30px;
+    text-align: center;
+}
+
+.stui-page li {
+    display: inline-block;
+    margin-left: 10px;
+}
+
+.stui-page li .num,
+.stui-page li a {
+    display: inline-block;
+    padding: 5px 15px;
+    border-radius: 5px;
+    background-color: #f1f1f1;
+    color: #333;
+    border: 1px solid #ddd;
+    transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+.stui-page li .num {
+    background-color: #007bff;
+    color: white;
+}
+
+.stui-page li a:hover,
+.stui-page li a:focus {
+    background-color: #007bff;
+    color: white;
+    border-color: #007bff;
+}
+
+.stui-page .active a {
+    background-color: #007bff;
+    color: white;
+    border-color: #007bff;
+}
+
+.stui-page .hidden-xs {
+    display: inline-block;
+}
+
+/* Responsive Styles */
+@media (max-width: 768px) {
+    .stui-page .hidden-xs {
+        display: none;
+    }
+
+    .stui-page .visible-xs {
+        display: inline-block;
+    }
+}
+
+/* Page Controls (First, Previous, Next, Last) */
+.stui-page a {
+    text-decoration: none;
+    font-weight: normal;
+}
+
+.stui-page a:first-child,
+.stui-page a:last-child {
+    font-weight: normal
+}
+
+.stui-page .pagego {
+    padding: 6px;
+    margin-right: 5px;
+    border-radius: 5px;
+    background-color: #f1f1f1;
+    color: #333;
+}
+
+.stui-page .pagego:hover {
+    background-color: #007bff;
+    color: white;
+}
+
+/* Additional styles for page numbers */
+.stui-page-text {
+    padding: 0 20px 20px;
+}
+
+.stui-page-text span {
+    font-style: normal;
+    display: inline-block;
+    padding: 6px 12px;
+    border-radius: 2px;
+    cursor: pointer;
+    background-color: #f1f1f1;
+    color: #333;
+}
+
+.stui-page-text .pagebtn {
+    padding: 6px 12px;
+    cursor: pointer;
+}

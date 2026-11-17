@@ -1,0 +1,6 @@
+{
+  "script": "/build/player/tram-movie-player-9bf0fd73.js",
+  "integrity": "sha256-RJolHjjw+m0LdF/Lor2T1sMtKPf7h5AB6qAUfQp1hYM=",
+  "hls_version": "1.7.3",
+  "format": "iife"
+}

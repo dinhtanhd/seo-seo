@@ -1,0 +1,194 @@
+<div data-tram-page="detail" data-tram-title="{{content.title}}" data-tram-detail="{{url.detail}}"></div><h1 class="tram-theme-sr-only">{{seo.h1}}</h1>
+        <div class=" header head-wrapper">
+            <div class=" ewave-banner-box float-top clearfix hidden-lg hidden-xl hidden-xxl ewave-remove-box">
+                <div class="FY8b9T ewave-banner-wrapper ewave-remove-list" id="float-top"></div>
+                <a class=" ewave-banner-close"><i class=" fa fa-close"></i></a>
+            </div>
+            <div class=" container">
+                <div class=" a1 clearfix">
+                    <a class=" logo" href="{{url.home}}">{{site.name}}</a>
+                    <div class=" nav">
+                        <div class=" ewave-swiper ewave-swiper-nav">
+                            <div class=" swiper-wrapper">
+                                <a class=" swiper-slide" href="{{url.home}}">首页</a>
+                                {{#each navigation}}<a class=" swiper-slide active" href="{{nav_item.path}}">{{nav_item.name}}</a>{{/each}}
+                                <a class=" swiper-slide" href="{{url.list}}" title="最近更新">最近更新</a>
+                                <a class=" swiper-slide" href="{{url.list}}" title="排行榜">排行榜</a>
+                                <a class=" swiper-slide" href="#tram-runtime-state">留言报错</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class=" a3">
+                    <div class=" item nav-m">
+                        <a class=" ewave-offcanvas" href="#tram-runtime-state" data-target="#nav-m-box"><i class=" fa fa-sliders"></i><span>导航</span></a>
+                        <div class=" nav-m-box ewave-offcanvas-content" id="nav-m-box">
+                            <ul class=" nav-m-wrapper">
+                                <li><a href="{{url.home}}">首页</a></li>
+                                {{#each sections}}<li class=" ewave-collapse">
+                                    <a class=" ewave-collapse-toggle" href="{{section.path}}">{{section.name}}</a>
+                                    <div class=" ewave-collapse-content">{{#each section.children}}<a href="{{sub_category.path}}">{{sub_category.name}}</a>{{/each}}</div>
+                                </li>{{/each}}
+                                <li><a href="{{url.list}}" title="最近更新">最近更新</a></li>
+                                <li><a href="{{url.list}}" title="排行榜">排行榜</a></li>
+                                <li><a href="#tram-runtime-state">留言报错</a></li>
+                            </ul>
+                        </div>
+                        <div class=" ewave-offcanvas-modal"></div>
+                    </div>
+                    <div class=" item js-search"><a href="#tram-runtime-state"><i class=" fa fa-search"></i><span>搜索</span></a></div>
+                    <div class=" item js-history ewave-history"></div>
+                    <div class=" item js-user ewave-user"></div>
+                    <div class=" item skin-switch"><a class=" light" href="#tram-runtime-state" title="切换至亮色模式"><i class=" fa fa-sun-o"></i><span>换肤</span></a><a class=" dark" href="#tram-runtime-state" title="切换至暗色模式"><i class=" fa fa-moon-o"></i><span>换肤</span></a></div>
+                </div>
+                <form class=" a2 search" action="{{url.search}}" method="get">
+                    <div class=" input clearfix">
+                        <div class=" ewave-dropdown ewave-click-dropdown ewave-search-dropdown">
+                            <span class=" ewave-search-dropdown-text">视频</span>&nbsp;<i class=" fa fa-caret-down"></i>
+                            <div class=" ewave-dropdown-box">
+                                <ul>
+                                    <li data-action="{{url.search}}"><a href="#tram-runtime-state">视频</a></li>
+                                    <li data-action="{{url.search}}"><a href="#tram-runtime-state">文章</a></li>
+                                    <li data-action="{{url.search}}"><a href="#tram-runtime-state">明星</a></li>
+                                </ul>
+                            </div>
+                        </div>
+                        <input type="text" class=" jheader-search-input search-key" placeholder="请输入关键词" name="q" autocomplete="off" required value="{{search.query}}" aria-label="搜索影片"><a href="{{url.list}}" class=" hot"><i class=" fa fa-fire"></i>排行榜</a><button type="submit" class=" btn search-btn"><i class=" fa fa-search"></i></button>
+                        <div class=" hot-list">
+                            <div class=" hot-search-list">
+                                <h5 class=" title">热门搜索</h5>
+                                {{#each recommended_movies}}<a href="{{movie.path}}" class=" hot-item" title="{{movie.title}}"><span class=" order n0">{{movie.rank}}</span><span class=" hot-word">{{movie.title}}</span></a>{{/each}}
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class=" search-placeholder"></div>
+        </div>
+        <div class=" head-placeholder gap"></div>
+        <div class=" container gap">
+            <div class=" banner-layout-box ewave-banner-box ewave-remove-box">
+                <div class="yfnZjm ewave-banner-wrapper ewave-remove-list" id="banner-top"></div>
+            </div>
+        </div>
+        <div class=" container">
+            <div class=" vod-info gap clearfix">
+                <div class=" pic"><img class=" lazyload" src="{{asset.default6/statics/images/load.gif}}" data-original="{{content.poster_url}}" alt="{{site.name}}"></div>
+                <div class=" info">
+                    <h3><a href="{{url.detail}}" title="{{content.title}}">{{content.title}}</a></h3>
+                    <p class=" row"><span class=" col-xs-12 col-sm-6 col-md-12 text-overflow">分类：{{content.genre}}</span><span class=" col-xs-6 col-md-4 text-overflow">地区：{{content.area}}</span><span class=" col-xs-6 col-md-4 text-overflow">年份：{{content.year}}</span><span class=" col-xs-12 col-sm-6 col-md-4 text-overflow">导演：{{content.director}}</span><span class=" col-xs-12 text-row text-row-2">主演：{{content.actors}}</span><span class=" col-xs-12">状态：{{content.remarks}}</span></p>
+                    <div class=" text text-row text-row-2">简介：{{content.body_excerpt}}</div>
+                    <div class=" btn-box"><a href="{{url.play}}"><i class=" fa fa-play-circle-o"></i>立即播放</a><a class=" fav-btn ewave-ulog ewave-ulog-get" href="#tram-runtime-state" data-tram-action="favorite"><i class=" fa fa-heart-o"></i>收藏</a></div>
+                    <div class=" qrcode hidden-xs hidden-sm hidden-md">
+                        <div class=" img">
+                            <div class=" ewave-qrcode"></div>
+                            <p>手机扫码观看</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class=" vod-bottom pt-10 row">
+                <div class=" vod-left col-xs-12 col-xl-9">
+                    <div class=" playlist-box layout-box gap">
+                        <div class=" playlist-tab-box">
+                            <h2 class=" hidden-xs">播放列表</h2>
+                            <div class=" playlist-tab ewave-swiper ewave-swiper-nav">
+                                <ul class=" swiper-wrapper">
+                                    <li class=" swiper-slide ewave-tab active" data-target="#ewave-playlist-1">播放列表<em></em></li>
+                                    <li class=" swiper-slide ewave-tab" data-target="#ewave-playlist-2">播放列表<em></em></li>
+                                </ul>
+                            </div>
+                            <div class=" right ewave-sort" data-target=".ewave-playlist-sort-content:visible"><span><i class=" fa fa-sort-amount-asc"></i></span>正序</div>
+                        </div>
+                        <div class=" episode-box scrollbar">
+                            <ul class=" row ewave-tab-content ewave-playlist-content ewave-playlist-sort-content" id="ewave-playlist-1">{{#each episodes}}<li class=" col-xs-4 col-sm-3 col-md-2 ewave-playlist-item ewave-width-auto"><a class=" text-overflow" href="{{episode.play_url}}">{{episode.title}}</a></li>{{else}}<li class="ewave-playlist-item">暂无播放来源</li>{{/each}}</ul>
+                            <ul class=" row ewave-tab-content ewave-playlist-content ewave-playlist-sort-content" id="ewave-playlist-2" style="display: none">
+                            </ul>
+                        </div>
+                    </div>
+                    <div class=" banner-layout-box gap ewave-banner-box ewave-remove-box">
+                        <div class="uGdMxi ewave-banner-wrapper ewave-remove-list" id="detail-banner-1"></div>
+                    </div>
+                    <div class=" vod-list layout-box gap">
+                        <h2>内容简介</h2>
+                        <div class=" more-box"><p class="pt-10 pb-10" style="line-height:2">{{content.body_html}}</p></div>
+                    </div>
+                    
+                    <div class=" vod-list layout-box gap pb-0">
+                        <h2>猜你喜欢</h2>
+                        <div class=" more-box">
+                            <ul class=" row movie-list">{{#each recommended_movies}}<li class="hzwmau col-xs-4 col-md-3 col-xl-2">
+                                    <div class=" pic">
+                                        <a href="{{movie.path}}" title="{{movie.title}}">
+                                            <div class=" img-wrapper lazyload img-wrapper-pic" data-original="{{movie.poster_url}}" data-background="{{movie.poster_url}}"></div>
+                                        </a>
+                                    </div>
+                                    <div class=" name">
+                                        <h3><a href="{{movie.path}}" title="{{movie.title}}" >{{movie.title}}</a></h3>
+                                        <p class=" item-status text-overflow">{{movie.remarks}}</p>
+                                    </div>
+                                </li>{{/each}}</ul>
+                        </div>
+                    </div>
+                    
+                    <div class=" banner-layout-box gap ewave-banner-box ewave-remove-box">
+                        <div class="WfyGZe ewave-banner-wrapper ewave-remove-list" id="detail-banner-2"></div>
+                    </div>
+                    <div class=" comment-box layout-box gap">
+                        <div class=" comment-list">
+                            <h2 class=" gap">用户评论</h2>
+                            <div class="imQhgq ewave-comment">
+                                <div class=" ewave-empty"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class=" vod-right col-xs-12 col-xl-3 ewave-sticky hidden-xs hidden-sm hidden-md hidden-lg">
+                    <div class=" layout-box clearfix gap">
+                        <div class=" hot">
+                            <h2>相关推荐</h2>
+                            <ul class="6JhM4t ranking-list movie-list">{{#each recommended_movies}}<li class=" ranking-item">
+                                    <a class=" text-overflow" href="{{movie.path}}" title="{{movie.title}}">
+                                        <div class=" ranking-item-left">
+                                            <span class=" ranking-item-icon">NO</span><span class=" ranking-item-num">{{movie.rank}}</span>
+                                            <div class=" ranking-item-cover">
+                                                <div class=" img-wrapper lazyload" data-original="{{movie.poster_url}}"></div>
+                                            </div>
+                                        </div>
+                                        <div class=" ranking-item-hits hidden-lg hidden-xl"><i class="fa fa-fire"></i>&nbsp;—</div>
+                                        <div class=" ranking-item-info">
+                                            <h4 class=" text-overflow">{{movie.title}}</h4>
+                                            <p class=" text-overflow">{{movie.remarks}}</p>
+                                        </div>
+                                    </a>
+                                </li>{{/each}}</ul>
+                        </div>
+                    </div>                </div>
+            </div>
+        </div>
+        <div class=" container">
+            <div class=" banner-layout-box gap ewave-banner-box ewave-remove-box">
+                <div class="0koCR6 ewave-banner-wrapper ewave-remove-list" id="banner-bottom"></div>
+            </div>
+        </div>
+        
+        <section class="tram-friend-links tram-friend-links-fallback" data-tram-friend-links="true" aria-label="友情链接"><h2>友情链接</h2><ul>{{#each friend_links}}<li><a href="{{friend_link.url}}" title="{{friend_link.text}}" target="_blank" rel="noopener noreferrer">{{friend_link.text}}</a></li>{{/each}}</ul></section><div class=" bottom">
+            <div class=" container">
+                <p class=" hidden-xs"><a href="{{url.list}}">最新更新</a><i>|</i><a href="{{url.list}}">网站地图</a><i>|</i><a href="{{url.list}}">RSS订阅</a><i>|</i><a href="{{url.list}}">百度蜘蛛</a><i>|</i><a href="{{url.list}}">谷歌地图</a><i>|</i><a href="{{url.list}}">必应地图</a><i>|</i><a href="{{url.list}}">360地图</a><i>|</i><a href="{{url.list}}">搜狗地图</a><i>|</i><a href="{{url.list}}">神马爬虫</a></p>
+                <p>本站所有视频和图片均来自互联网收集而来，版权归原创者所有，本网站只提供web页面服务，并不提供资源存储，也不参与录制</p>
+                <p>Copyright © 2026 {{site.name}} All Rights Reserved</p>
+            </div>
+            <div class=" ewave-banner-box float-bottom clearfix hidden-lg hidden-xl hidden-xxl ewave-remove-box">
+                <div class="8NrCV6 ewave-banner-wrapper ewave-remove-list" id="float-bottom"></div>
+                <a class=" ewave-banner-close"><i class=" fa fa-close"></i></a>
+            </div>
+            <div class="5arrqc bottom-placeholder"></div>
+        </div>
+        <div class=" fixedbar-fixed-bar">
+            <div class=" ant-back-top"><i class=" fa fa-angle-up"></i><span class=" fixedbar-top">顶部</span><a href="#tram-runtime-state" class=" fixedbar-top-link"></a></div>
+            <div class=" type hidden-xs hidden-sm hidden-md">{{#each navigation}}<a class="fixedbar-anchor-text" href="{{nav_item.path}}">{{nav_item.name}}</a>{{/each}}</div>
+            <div class=" skin-switch"><a class=" light" href="#tram-runtime-state" title="切换至亮色模式"><span class=" fa fa-sun-o"></span></a><a class=" dark" href="#tram-runtime-state" title="切换至暗色模式"><span class=" fa fa-moon-o"></span></a></div>
+        </div>
+        <div style="display:none;">统计代码</div>
+    

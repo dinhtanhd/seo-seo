@@ -1,0 +1,46 @@
+{
+  "schema_version": 2,
+  "slug": "bjrmhj-mobile",
+  "name": "BJRMHJ · 晴天影视",
+  "description": "Chuyển từ bjrmhj.com qua UA mobile, giữ đầy đủ bố cục năm trang và CSS/font/UI gốc. Phim, poster và đường dẫn lấy từ dữ liệu Trạm SEO.",
+  "author": "Trạm SEO",
+  "runtime": {
+    "profile": "ewave-original-v1",
+    "stylesheets": [
+      "default14/assets/css/ewave-plugins.css",
+      "default14/assets/css/ewave-ui.css",
+      "default14/assets/css/style.css",
+      "css/source-inline.css",
+      "default14/assets/js/layer_theme/default/layer.css"
+    ],
+    "scripts": [
+      "default14/assets/js/jquery.min.js",
+      "default14/assets/js/ewave-plugins.js",
+      "js/tram-imported-runtime.js"
+    ],
+    "view_scripts": {},
+    "view_stylesheets": {},
+    "icons": [
+      {
+        "rel": "shortcut icon",
+        "asset": "d02a42d9cb3dec9320e5f550278911c7.png",
+        "type": "image/png"
+      }
+    ],
+    "meta": [
+      {
+        "http-equiv": "Cache-Control",
+        "content": "no-transform"
+      },
+      {
+        "http-equiv": "Cache-Control",
+        "content": "no-siteapp"
+      },
+      {
+        "name": "renderer",
+        "content": "webkit"
+      }
+    ],
+    "viewport": "width=device-width,initial-scale=1,maximum-scale=1"
+  }
+}

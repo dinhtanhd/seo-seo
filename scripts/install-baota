@@ -1,0 +1,488 @@
+#!/usr/bin/env bash
+# Native CentOS Stream 9/10 deployment using BaoTa's Nginx and PHP.
+set -Eeuo pipefail
+umask 027
+ROOT=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd -P)
+DOMAIN='' PUBLIC_HOSTS='' PHP_ROOT=/www/server/php/84
+RESTORE='' ENV_SOURCE='' STORAGE_SOURCE='' TLS_CERT='' TLS_KEY='' PG_BIN=''
+CHECK=0 FRESH_PAGES=0
+PHP_POOL=''
+CONNECTIONS_SOURCE=''
+PUBLIC_BUILD_SOURCE='' VERIFY_DATA=''
+usage() {
+    cat <<'EOF'
+Cài Trạm SEO trực tiếp trên CentOS Stream 9/10 đã có BaoTa.
+  sudo bash scripts/install-baota --domain admin.example.com [options]
+  bash scripts/install-baota --domain admin.example.com --check
+
+  --public-hosts a.example.com,b.example.com   Domain website phục vụ cùng ứng dụng
+  --php-root /www/server/php/84              PHP 8.4+ do BaoTa cài
+  --php-pool www                            Chọn pool BaoTa nếu PHP có nhiều pool
+  --pg-bin /path/to/bin                      Client PostgreSQL 18 có sẵn (tùy chọn)
+  --connections-file /root/tram-db.env        Kết nối DB/Redis đã tạo trong BaoTa
+  --tls-cert /path/fullchain.pem --tls-key /path/privkey.pem
+  --restore /path/database.dump --env-file /path/original.env --storage-dir /path/storage
+  --public-build-dir /path/public-build       Giữ tài nguyên JS/CSS của publication cũ
+  --verify-data /path/preservation.json       Đối chiếu dữ liệu nhập trước migration/job
+  --fresh-pages                             Tạo lại trang trên VPS mới sau khi nhập/đối chiếu
+  --check                                   Chỉ kiểm tra điều kiện, không cài/ghi
+
+BaoTa cần có Nginx, PHP 8.4+, PostgreSQL 18 và Redis. Xem hướng dẫn cài đặt gửi riêng cùng gói code.
+EOF
+}
+fail() { printf 'Lỗi: %s\n' "$*" >&2; exit 1; }
+step() { printf '\n%s\n' "$*"; }
+while (($#)); do
+    case "$1" in
+        --domain|--public-hosts|--php-root|--php-pool|--pg-bin|--tls-cert|--tls-key|--restore|--env-file|--storage-dir|--connections-file|--public-build-dir|--verify-data)
+            (($# >= 2)) || fail "Thiếu giá trị cho $1"
+            case "$1" in
+                --domain) DOMAIN=$2;; --public-hosts) PUBLIC_HOSTS=$2;; --php-root) PHP_ROOT=$2;;
+                --php-pool) PHP_POOL=$2;; --pg-bin) PG_BIN=$2;; --tls-cert) TLS_CERT=$2;; --tls-key) TLS_KEY=$2;;
+                --connections-file) CONNECTIONS_SOURCE=$2;; --restore) RESTORE=$2;; --env-file) ENV_SOURCE=$2;; --storage-dir) STORAGE_SOURCE=$2;;
+                --public-build-dir) PUBLIC_BUILD_SOURCE=$2;; --verify-data) VERIFY_DATA=$2;;
+            esac
+            shift 2;;
+        --check) CHECK=1; shift;;
+        --fresh-pages) FRESH_PAGES=1; shift;;
+        --help|-h) usage; exit 0;;
+        *) fail "Tham số chưa biết: $1";;
+    esac
+done
+[[ -n $DOMAIN ]] || { usage; exit 1; }
+[[ $(uname -s) == Linux ]] || fail 'Script cài đặt cần chạy trên VPS CentOS Stream 9/10.'
+# shellcheck source=/dev/null
+source /etc/os-release
+[[ ${ID:-} == centos && ${NAME:-} == *Stream* && ${VERSION_ID%%.*} =~ ^(9|10)$ ]] || fail 'Script này dành cho CentOS Stream 9/10.'
+command -v python3 >/dev/null || fail 'Cài Python trước bằng dnf install -y python3.'
+python3 - "$ROOT" "$DOMAIN" "$PUBLIC_HOSTS" "$PHP_ROOT" <<'PY'
+import re,sys
+root,domain,public,php=sys.argv[1:]
+for p in (root,php):
+    if not re.fullmatch(r'/[A-Za-z0-9_./-]+',p): raise SystemExit('Đường dẫn dự án/PHP không được có khoảng trắng hoặc ký tự đặc biệt.')
+for host in [domain,*filter(None,public.split(','))]:
+    if len(host)>253 or not all(re.fullmatch(r'[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?',s) for s in host.split('.')):
+        raise SystemExit('Domain cần chữ thường ASCII/punycode hợp lệ.')
+PY
+[[ -f $ROOT/application/artisan && -f $ROOT/application/composer.lock ]] || fail 'Giải nén đầy đủ dự án, gồm application, infra và scripts.'
+[[ -d /www/server/panel/vhost/nginx ]] || fail 'Cần BaoTa và Nginx đã cài trên VPS.'
+PHP=$PHP_ROOT/bin/php
+NGINX=/www/server/nginx/sbin/nginx
+[[ -x $PHP && -x $PHP_ROOT/sbin/php-fpm && -x $NGINX ]] || fail 'Cài Nginx và PHP 8.4 trong Software Store của BaoTa.'
+"$NGINX" -V 2>&1 | grep -q -- http_auth_request_module || fail 'Nginx BaoTa cần module http_auth_request để chạy cache PHP.'
+"$PHP" -r '
+$missing = [];
+foreach (["pdo_pgsql","intl","mbstring","dom","xml","zip","pcntl","bcmath","redis","curl","fileinfo","ctype","openssl","session","tokenizer","Zend OPcache"] as $ext) {
+    if (!extension_loaded($ext)) $missing[] = $ext;
+}
+foreach (["proc_open","pcntl_signal","pcntl_alarm","pcntl_async_signals"] as $function) {
+    if (!function_exists($function)) $missing[] = "function ".$function;
+}
+if (PHP_VERSION_ID < 80401) $missing[] = "PHP >= 8.4.1";
+if ($missing) {fwrite(STDERR, "Cần bật/cài trong PHP BaoTa: ".implode(", ", $missing).PHP_EOL); exit(1);}
+if (!is_string(transliterator_transliterate("Han-Latin; Latin-ASCII; Lower()", "动作片"))) exit(1);
+' || fail 'PHP chưa đủ extension/hàm hoặc dữ liệu ICU pinyin; kiểm tra cấu hình PHP trong BaoTa.'
+PHP_UPSTREAM=$(python3 "$ROOT/scripts/baota-config.py" --detect-fpm --php-root "$PHP_ROOT" --php-pool "$PHP_POOL") || fail 'Không xác định được pool PHP BaoTa; kiểm tra PHP hoặc chọn --php-pool.'
+python3 - "$PHP_UPSTREAM" <<'PYFPM'
+import socket,sys
+upstream=sys.argv[1]
+try:
+    if upstream.startswith('unix:'):
+        connection=socket.socket(socket.AF_UNIX,socket.SOCK_STREAM);connection.settimeout(3);connection.connect(upstream[5:])
+    else:
+        host,port=upstream.rsplit(':',1)
+        connection=socket.create_connection((host.strip('[]'),int(port)),timeout=3)
+    connection.close()
+except OSError:
+    raise SystemExit('PHP-FPM BaoTa chưa nhận kết nối. Khởi động hoặc reload phiên bản PHP đã chọn trong BaoTa.')
+PYFPM
+# Server PostgreSQL/Redis are managed by BaoTa; this installer needs PostgreSQL client tools.
+if [[ -z $PG_BIN ]]; then
+    candidates=(/www/server/pgsql/bin /www/server/pgsql/18/bin /usr/bin /usr/pgsql-18/bin)
+    while IFS= read -r candidate; do candidates+=("$(dirname "$candidate")"); done < <(find /www/server -maxdepth 5 -type f -name pg_dump 2>/dev/null)
+    for candidate in "${candidates[@]}"; do
+        if [[ -x $candidate/pg_dump && -x $candidate/pg_restore && -x $candidate/psql ]] && "$candidate/pg_dump" --version | grep -Eq 'PostgreSQL\) 18\.'; then
+            PG_BIN=$candidate; break
+        fi
+    done
+fi
+[[ -n $PG_BIN && -x $PG_BIN/pg_dump && -x $PG_BIN/pg_restore && -x $PG_BIN/psql ]] || fail 'Cài PostgreSQL 18 trong BaoTa hoặc truyền --pg-bin tới bộ client PostgreSQL 18.'
+"$PG_BIN/pg_dump" --version | grep -Eq 'PostgreSQL\) 18\.' || fail 'Client PostgreSQL cần major 18 để chuyển dữ liệu hiện tại.'
+for command in curl rsync openssl tar xz flock; do command -v "$command" >/dev/null || fail "Thiếu công cụ $command."; done
+id www >/dev/null 2>&1 || fail 'Chưa có user www của BaoTa.'
+[[ -d /run/systemd/system ]] || fail 'Cần systemd đang hoạt động.'
+if [[ -n $RESTORE ]]; then
+    [[ -f $RESTORE && -f $ENV_SOURCE && -d $STORAGE_SOURCE/app ]] || fail 'Restore cần dump dạng custom, env gốc và thư mục storage có app/.'
+    python3 - "$ENV_SOURCE" <<'PYKEY'
+import base64,re,sys
+from pathlib import Path
+m=re.search(r'^APP_KEY=(.*)$',Path(sys.argv[1]).read_text(),re.M)
+key=m[1].strip().strip('"').strip("'") if m else ''
+try:
+    valid=key.startswith('base64:') and len(base64.b64decode(key[7:],validate=True))==32
+except ValueError:
+    valid=False
+if not valid: raise SystemExit('Env gốc cần APP_KEY base64 thực, không chỉ APP_KEY_FILE.')
+PYKEY
+elif [[ -n $ENV_SOURCE || -n $STORAGE_SOURCE ]]; then
+    fail '--env-file và --storage-dir dùng cùng --restore.'
+fi
+if [[ -n $PUBLIC_BUILD_SOURCE ]]; then
+    [[ -d $PUBLIC_BUILD_SOURCE && ! -L $PUBLIC_BUILD_SOURCE ]] || fail '--public-build-dir cần thư mục thực chứa nội dung public/build đã xuất.'
+fi
+if [[ -n $VERIFY_DATA ]]; then
+    [[ -f $VERIFY_DATA && -f $ROOT/scripts/baota-preservation.py ]] || fail 'Thiếu --verify-data hoặc công cụ đối chiếu baota-preservation.py trong gói.'
+fi
+if ((FRESH_PAGES)); then
+    [[ -n $RESTORE && -n $VERIFY_DATA ]] || fail '--fresh-pages cần --restore và --verify-data để chỉ làm mới bản nhập có đối chiếu.'
+    [[ ! -f /var/lib/tram-seo/install-complete ]] || fail 'Instance này đã cài xong. --fresh-pages chỉ dùng khi đưa dữ liệu vào VPS mới; cập nhật code thì bỏ cờ này.'
+fi
+python3 - "$ROOT/application/public/build" "$PUBLIC_BUILD_SOURCE" <<'PYASSETS'
+import os,stat,sys
+from pathlib import Path
+for name in filter(None,sys.argv[1:]):
+    root=Path(name)
+    if root.is_symlink() or (root.exists() and not root.is_dir()):
+        raise SystemExit('Thư mục public/build không được là symlink hoặc file.')
+    for parent,dirs,files in os.walk(root):
+        for entry in dirs+files:
+            path=Path(parent)/entry
+            mode=path.lstat().st_mode
+            if not stat.S_ISDIR(mode) and not stat.S_ISREG(mode):
+                raise SystemExit('Tài nguyên build chỉ được chứa thư mục và file thường.')
+PYASSETS
+if [[ -z $TLS_CERT && -z $TLS_KEY && -f /www/server/panel/vhost/cert/$DOMAIN/fullchain.pem ]]; then
+    TLS_CERT=/www/server/panel/vhost/cert/$DOMAIN/fullchain.pem
+    TLS_KEY=/www/server/panel/vhost/cert/$DOMAIN/privkey.pem
+fi
+if [[ -n $TLS_CERT || -n $TLS_KEY ]]; then
+    [[ -f $TLS_CERT && -f $TLS_KEY ]] || fail 'Cần đủ certificate và private key HTTPS.'
+fi
+if [[ -f /etc/tram-seo/project-root ]]; then
+    [[ $(cat /etc/tram-seo/project-root) == "$ROOT" ]] || fail 'Installer đang quản lý một root Trạm SEO khác; dùng root đã ghi trong /etc/tram-seo/project-root.'
+fi
+if ((CHECK)); then
+    printf 'Đủ điều kiện BaoTa/PHP trên %s. Client PostgreSQL 18 đã có; kết nối DB/Redis được kiểm tra khi cài.\n' "$PRETTY_NAME"
+    printf 'Root %s\nDomain %s\nPHP %s\nPHP-FPM BaoTa: %s (giữ nguyên cấu hình worker).\n' "$ROOT" "$DOMAIN" "$PHP_ROOT" "$PHP_UPSTREAM"
+    exit 0
+fi
+((EUID == 0)) || fail 'Chạy bằng sudo hoặc root để cài dịch vụ.'
+exec 9>/run/tram-seo-install.lock
+flock -n 9 || fail 'Một lượt cài Trạm SEO khác đang chạy.'
+STATE=/var/lib/tram-seo
+CONF=/etc/tram-seo
+mkdir -p "$STATE" "$CONF" /var/log/tram-seo
+chmod 0755 "$STATE"
+chmod 0700 "$CONF"
+printf '%s\n' "$ROOT" > "$CONF/project-root"
+BUILD=$(mktemp -d /var/tmp/tram-seo-install.XXXXXX)
+BUILD_ASSETS_PENDING=0
+cleanup_install() {
+    local status=$?
+    if ((BUILD_ASSETS_PENDING)); then
+        # Vite may empty public/build before failing or being interrupted.
+        # Restore the exact pre-build tree; only partially generated output is removed.
+        if ! rsync -ac --delete -- "$BUILD/public-build-before/" "$ROOT/application/public/build/"; then
+            printf 'Chưa khôi phục được tài nguyên build; giữ bản sao tại %s/public-build-before.\n' "$BUILD" >&2
+            return 1
+        fi
+    fi
+    rm -rf -- "$BUILD"
+    if ((status)); then printf 'Cài đặt chưa đạt. Xem bước lỗi ở trên; có thể chạy lại cùng lệnh.\n' >&2; fi
+}
+trap cleanup_install EXIT
+trap 'exit 130' INT
+trap 'exit 143' TERM
+for service in worker crawler scheduler; do
+    if systemctl is-active --quiet "tram-seo-$service"; then systemctl stop "tram-seo-$service"; fi
+done
+step 'Chuẩn bị thư mục ứng dụng, cấu hình và các dịch vụ riêng.'
+mkdir -p "$ROOT/application/storage"/{app/private,app/public,app/public-html,framework/cache/data,framework/cache/locks,framework/sessions,framework/views,logs} "$ROOT/application/bootstrap/cache" "$ROOT/application/database"/{factories,seeders}
+if [[ ! -f $ROOT/application/.env ]]; then
+    if [[ -n $ENV_SOURCE ]]; then cp -- "$ENV_SOURCE" "$ROOT/application/.env";
+    else
+        cp "$ROOT/application/.env.example" "$ROOT/application/.env"
+        python3 - "$ROOT/application/.env" <<'PYKEY'
+import base64,secrets,sys
+from pathlib import Path
+f=Path(sys.argv[1]);s=f.read_text()
+s=s.replace('APP_KEY=\n','APP_KEY=base64:'+base64.b64encode(secrets.token_bytes(32)).decode()+'\n',1)
+s=s.replace('PUBLIC_ON_DEMAND_ENABLED=false','PUBLIC_ON_DEMAND_ENABLED=true')
+f.write_text(s)
+PYKEY
+    fi
+elif [[ -n $ENV_SOURCE ]]; then
+    python3 - "$ENV_SOURCE" "$ROOT/application/.env" <<'PYKEY'
+import re,sys
+from pathlib import Path
+keys=[]
+for filename in sys.argv[1:]:
+    match=re.search(r'^APP_KEY=(.*)$',Path(filename).read_text(),re.M)
+    keys.append(match[1].strip().strip('"').strip("'") if match else '')
+if not keys[0] or keys[0]!=keys[1]: raise SystemExit('APP_KEY hiện có khác env gốc. Kiểm tra đúng ứng dụng trước khi restore.')
+PYKEY
+fi
+if [[ -n $CONNECTIONS_SOURCE ]]; then
+    [[ -f $CONNECTIONS_SOURCE ]] || fail 'Không tìm thấy --connections-file.'
+    if [[ $(readlink -f "$CONNECTIONS_SOURCE") != "$CONF/connections.env" ]]; then
+        install -m 0600 "$CONNECTIONS_SOURCE" "$CONF/connections.env"
+    fi
+fi
+if [[ ! -f $CONF/connections.env ]]; then
+    [[ -t 0 ]] || fail 'Cần --connections-file khi chạy không có terminal tương tác.'
+    step 'Nhập thông tin PostgreSQL và Redis đã tạo trong BaoTa.'
+    # Read secrets in Python so they never become shell arguments or terminal output.
+    python3 - "$CONF/connections.env" "$ROOT/scripts/baota-config.py" <<'PYCONN'
+import getpass,importlib.util,os,sys
+from pathlib import Path
+spec=importlib.util.spec_from_file_location('config',sys.argv[2]);module=importlib.util.module_from_spec(spec);spec.loader.exec_module(module)
+sys.stdin=open('/dev/tty')
+questions=[('DB_HOST','Host PostgreSQL','127.0.0.1'),('DB_PORT','Cổng PostgreSQL','5432'),
+ ('DB_DATABASE','Database','tram_seo'),('DB_USERNAME','User database','tram_seo')]
+values={k:input(f'{label} [{default}]: ').strip() or default for k,label,default in questions}
+values['DB_PASSWORD']=getpass.getpass('Mật khẩu database: ')
+values['REDIS_HOST']=input('Host Redis [127.0.0.1]: ').strip() or '127.0.0.1'
+values['REDIS_PORT']=input('Cổng Redis [6379]: ').strip() or '6379'
+values['REDIS_USERNAME']=input('User Redis ACL [để trống nếu không dùng]: ').strip()
+values['REDIS_PASSWORD']=getpass.getpass('Mật khẩu Redis [để trống nếu không có]: ')
+for value in values.values():
+    if any(ord(c)<32 or ord(c)==127 for c in value): raise SystemExit('Giá trị không được chứa ký tự điều khiển.')
+for key in ('REDIS_USERNAME','REDIS_PASSWORD'):
+    if not values[key]: values[key]=None
+f=Path(sys.argv[1]);fd=os.open(f,os.O_CREAT|os.O_EXCL|os.O_WRONLY,0o600)
+with os.fdopen(fd,'w') as stream:
+    stream.write('\n'.join(f'{key}={module.dotenv_quote(value)}' for key,value in values.items())+'\n')
+PYCONN
+fi
+had_cache_include=0
+if [[ -f $CONF/nginx/public-html-cache-location.conf ]]; then
+    had_cache_include=1
+    cp -p "$CONF/nginx/public-html-cache-location.conf" "$BUILD/cache-include-before-install.conf"
+fi
+python3 "$ROOT/scripts/baota-config.py" --root "$ROOT" --domain "$DOMAIN" --public-hosts "$PUBLIC_HOSTS" \
+    --php-root "$PHP_ROOT" --php-upstream "$PHP_UPSTREAM" --connections-file "$CONF/connections.env" --tls-cert "$TLS_CERT" --tls-key "$TLS_KEY" --output "$CONF"
+cp "$ROOT/application/.env" "$CONF/env-before-install"
+install -m 0600 -o www -g www "$CONF/application.env" "$ROOT/application/.env"
+chown www:www /var/log/tram-seo
+chmod 0750 /var/log/tram-seo
+chown -R www:www "$ROOT/application"
+chmod 0600 "$ROOT/application/.env"
+chown root:www "$CONF"
+chmod 0750 "$CONF"
+install -m 0644 "$CONF"/systemd/tram-seo-{worker,crawler,scheduler}.service /etc/systemd/system/
+if command -v getenforce >/dev/null && [[ $(getenforce) != Disabled ]]; then
+    command -v semanage >/dev/null || fail 'SELinux đang bật, cần dnf install -y policycoreutils-python-utils.'
+    root_pattern=$(python3 -c 'import re,sys; print(re.escape(sys.argv[1]))' "$ROOT")
+    semanage fcontext -a -t httpd_sys_content_t "$root_pattern(/.*)?" 2>/dev/null || semanage fcontext -m -t httpd_sys_content_t "$root_pattern(/.*)?"
+    for writable in "$root_pattern/application/storage" "$root_pattern/application/bootstrap/cache"; do
+        semanage fcontext -a -t httpd_sys_rw_content_t "$writable(/.*)?" 2>/dev/null || semanage fcontext -m -t httpd_sys_rw_content_t "$writable(/.*)?"
+    done
+    semanage fcontext -a -t httpd_log_t '/var/log/tram-seo(/.*)?' 2>/dev/null || semanage fcontext -m -t httpd_log_t '/var/log/tram-seo(/.*)?'
+    setsebool -P httpd_can_network_connect on
+    restorecon -R "$ROOT" /var/log/tram-seo
+fi
+systemctl daemon-reload
+# Export only non-secret libpq settings. The password is passed through a private pgpass file.
+mapfile -t PG_SETTINGS < <(python3 - "$CONF/connections.env" "$BUILD/pgpass" "$ROOT/scripts/baota-config.py" <<'PYPG'
+import importlib.util,os,sys
+from pathlib import Path
+spec=importlib.util.spec_from_file_location('config',sys.argv[3]);module=importlib.util.module_from_spec(spec);spec.loader.exec_module(module)
+connections=module.read_connections(Path(sys.argv[1]))
+values=[connections[key] for key in ('DB_HOST','DB_PORT','DB_DATABASE','DB_USERNAME','DB_PASSWORD','DB_SSLMODE')]
+escape=lambda s:s.replace('\\','\\\\').replace(':','\\:')
+password_fields=values[:5]
+if password_fields[0].startswith('/'): password_fields[0]='*'
+f=Path(sys.argv[2]);f.write_text(':'.join(escape(v) for v in password_fields)+'\n');f.chmod(0o600)
+print('\n'.join(values[:4]+[values[5]]))
+PYPG
+)
+((${#PG_SETTINGS[@]} == 5)) || fail 'Không đọc được cấu hình PostgreSQL.'
+unset PGPASSWORD PGSERVICE PGSERVICEFILE
+export PGHOST="${PG_SETTINGS[0]}" PGPORT="${PG_SETTINGS[1]}" PGDATABASE="${PG_SETTINGS[2]}" PGUSER="${PG_SETTINGS[3]}" PGSSLMODE="${PG_SETTINGS[4]}" PGPASSFILE="$BUILD/pgpass"
+psql_app() { "$PG_BIN/psql" -X -w -v ON_ERROR_STOP=1 "$@"; }
+server_version=$(psql_app -Atq -c 'SHOW server_version_num')
+[[ $server_version =~ ^18[0-9]{4}$ ]] || fail 'Database đích cần PostgreSQL 18.'
+step 'Kiểm tra kết nối Redis hiện có trong BaoTa.'
+python3 - "$CONF/connections.env" "$ROOT/scripts/baota-config.py" <<'PYREDIS' | "$PHP" -r '
+try {
+    $c = json_decode(stream_get_contents(STDIN), true, 512, JSON_THROW_ON_ERROR);
+    $r = new Redis;
+    $port = str_starts_with($c["REDIS_HOST"], "/") ? 0 : (int)$c["REDIS_PORT"];
+    if (!$r->connect($c["REDIS_HOST"], $port, 5)) throw new RuntimeException;
+    if ($c["REDIS_PASSWORD"] !== null) {
+        $auth = $c["REDIS_USERNAME"] !== null ? [$c["REDIS_USERNAME"], $c["REDIS_PASSWORD"]] : $c["REDIS_PASSWORD"];
+        if (!$r->auth($auth)) throw new RuntimeException;
+    }
+    if (!$r->ping()) throw new RuntimeException;
+    $r->close();
+} catch (Throwable $e) {fwrite(STDERR, "Không kết nối/xác thực được Redis. Kiểm tra connections.env và dịch vụ trong BaoTa.\n"); exit(1);}
+'
+import importlib.util,json,sys
+from pathlib import Path
+spec=importlib.util.spec_from_file_location('config',sys.argv[2]);module=importlib.util.module_from_spec(spec);spec.loader.exec_module(module)
+print(json.dumps(module.read_connections(Path(sys.argv[1]))))
+PYREDIS
+step 'Khôi phục dữ liệu được chỉ định hoặc sao lưu database hiện có.'
+if [[ -n $RESTORE ]]; then
+    dump_hash=$(sha256sum "$RESTORE" | cut -d' ' -f1)
+    target_hash=$(printf '%s\n' "$PGHOST" "$PGPORT" "$PGDATABASE" "$PGUSER" | sha256sum | cut -d' ' -f1)
+    if [[ -f $STATE/restore.sha256 ]]; then
+        [[ $(cat "$STATE/restore.sha256") == "$dump_hash" ]] || fail 'Đã nhập dump khác. Chọn một đích mới để nhập dữ liệu khác.'
+        [[ -f $STATE/restore-target.sha256 && $(cat "$STATE/restore-target.sha256") == "$target_hash" ]] || fail 'Đích restore đã thay đổi. Kiểm tra lại database đã nhập trước khi tiếp tục.'
+    else
+        tables=$(psql_app -Atq -c "SELECT count(*) FROM pg_tables WHERE schemaname='public'")
+        [[ $tables == 0 ]] || fail 'Restore cần database đích trống; database hiện có được giữ để đối chiếu.'
+        "$PG_BIN/pg_restore" --list "$RESTORE" >/dev/null || fail 'Cần dump định dạng custom từ pg_dump -Fc.'
+        "$PG_BIN/pg_restore" --single-transaction --exit-on-error --no-owner --no-acl -w -d "$PGDATABASE" < "$RESTORE"
+        printf '%s\n' "$target_hash" > "$STATE/restore-target.sha256"
+        printf '%s\n' "$dump_hash" > "$STATE/restore.sha256"
+    fi
+    if [[ ! -f $STATE/restore-storage.sha256 ]]; then
+        rsync -a -- "$STORAGE_SOURCE/app/" "$ROOT/application/storage/app/"
+        chown -R www:www "$ROOT/application/storage"
+        printf '%s\n' "$dump_hash" > "$STATE/restore-storage.sha256"
+    fi
+fi
+if [[ -n $PUBLIC_BUILD_SOURCE ]]; then
+    step 'Bổ sung tài nguyên lịch sử để giữ các URL JS/CSS đã xuất bản.'
+    mkdir -p "$ROOT/application/public/build"
+    rsync -a --ignore-existing -- "$PUBLIC_BUILD_SOURCE/" "$ROOT/application/public/build/"
+    chown -R www:www "$ROOT/application/public/build"
+fi
+if [[ -n $VERIFY_DATA ]]; then
+    verification_hash=$( { sha256sum "$VERIFY_DATA" | cut -d' ' -f1; printf '%s\n' "${dump_hash:-}" "${target_hash:-}"; } | sha256sum | cut -d' ' -f1)
+    if [[ -n $RESTORE && -f $STATE/restore-verified.sha256 ]]; then
+        [[ $(cat "$STATE/restore-verified.sha256") == "$verification_hash" ]] || fail 'Manifest hoặc đích đối chiếu khác lượt nhập đã xác minh.'
+        step 'Lượt nhập này đã được đối chiếu trước đó; giữ các thay đổi hợp lệ sau khi nhập.'
+    else
+        step 'Đối chiếu dữ liệu, URL và keyword nhập trước migration hoặc chạy job.'
+        python3 "$ROOT/scripts/baota-preservation.py" verify --connections-file "$CONF/connections.env" --pg-bin "$PG_BIN" --manifest "$VERIFY_DATA"
+        if [[ -n $RESTORE ]]; then printf '%s\n' "$verification_hash" > "$STATE/restore-verified.sha256"; fi
+    fi
+fi
+install -d -m 0700 "$STATE/backups"
+backup="$STATE/backups/before-migrate-$(date -u +%Y%m%dT%H%M%SZ).dump"
+"$PG_BIN/pg_dump" -w -Fc --no-owner --no-acl > "$backup"
+chmod 0600 "$backup"
+step 'Cài dependency khóa phiên bản và build giao diện.'
+install -d -m 0755 /opt/tram-seo
+if [[ ! -f /opt/tram-seo/composer.phar ]]; then
+    curl -fsSL https://getcomposer.org/installer -o "$BUILD/composer-setup.php"
+    expected=$(curl -fsSL https://composer.github.io/installer.sig)
+    actual=$("$PHP" -r 'echo hash_file("sha384", $argv[1]);' "$BUILD/composer-setup.php")
+    [[ $actual == "$expected" ]] || fail 'Chữ ký installer Composer không khớp.'
+    "$PHP" "$BUILD/composer-setup.php" --2 --install-dir=/opt/tram-seo --filename=composer.phar
+fi
+chmod 0644 /opt/tram-seo/composer.phar
+NODE_BIN=''
+if [[ -x /opt/tram-seo/node/bin/node && -x /opt/tram-seo/node/bin/npm ]] && /opt/tram-seo/node/bin/node -e 'process.exit(((v)=>v[0]>22||(v[0]===22&&v[1]>=13))(process.versions.node.split(".").map(Number))?0:1)'; then NODE_BIN=/opt/tram-seo/node/bin;
+elif command -v node >/dev/null && command -v npm >/dev/null && node -e 'process.exit(((v)=>v[0]>22||(v[0]===22&&v[1]>=13))(process.versions.node.split(".").map(Number))?0:1)'; then NODE_BIN=$(dirname "$(command -v node)"); fi
+if [[ -z $NODE_BIN ]]; then
+    case $(uname -m) in x86_64) arch=x64;; aarch64) arch=arm64;; *) fail 'Node build hỗ trợ x86_64 hoặc aarch64.';; esac
+    curl -fsSL https://nodejs.org/dist/latest-v22.x/SHASUMS256.txt -o "$BUILD/SHASUMS256.txt"
+    archive=$(awk -v suffix="-linux-$arch.tar.xz" '$2 ~ suffix "$" {print $2; exit}' "$BUILD/SHASUMS256.txt")
+    [[ $archive =~ ^node-v22\.[0-9]+\.[0-9]+-linux-(x64|arm64)\.tar\.xz$ ]] || fail 'Không xác định được bản Node 22 chính thức.'
+    curl -fSL "https://nodejs.org/dist/latest-v22.x/$archive" -o "$BUILD/$archive"
+    (cd "$BUILD" && grep " $archive$" SHASUMS256.txt | sha256sum -c -)
+    install -d -m 0755 /opt/tram-seo/node
+    (umask 022; tar -xJf "$BUILD/$archive" --no-same-owner --strip-components=1 -C /opt/tram-seo/node)
+    NODE_BIN=/opt/tram-seo/node/bin
+fi
+export PATH="$PHP_ROOT/bin:$NODE_BIN:$PATH"
+cd "$ROOT/application"
+app_php() { runuser -u www -- "$PHP" "$@"; }
+# Remove only generated configuration before Composer boots this release.
+rm -f "$ROOT/application/bootstrap/cache/config.php"
+export COMPOSER_HOME="$ROOT/application/storage/framework/composer"
+app_php /opt/tram-seo/composer.phar install --no-dev --prefer-dist --no-interaction --optimize-autoloader
+app_php /opt/tram-seo/composer.phar check-platform-reqs --no-dev
+runuser -u www -- env PATH="$PATH" npm ci --cache "$ROOT/application/storage/framework/npm-cache"
+mkdir -p "$ROOT/application/public/build" "$BUILD/public-build-before"
+rsync -a -- "$ROOT/application/public/build/" "$BUILD/public-build-before/"
+chown www:www "$ROOT/application/public/build"
+BUILD_ASSETS_PENDING=1
+runuser -u www -- env PATH="$PATH" npm run build
+# New manifests keep selecting the new release. Missing historical hashed assets
+# are copied back for immutable publications which still reference their old URLs.
+rsync -a --ignore-existing -- "$BUILD/public-build-before/" "$ROOT/application/public/build/"
+BUILD_ASSETS_PENDING=0
+step 'Áp migration, dựng cấu hình và kiểm tra dữ liệu phục vụ.'
+app_php artisan config:clear
+app_php artisan migrate --force --no-interaction
+if ((FRESH_PAGES)); then
+    step 'Tạo lại trang trên bản nhập đã xác minh; kho phim, keyword và cấu hình được giữ.'
+    python3 - "$CONF/fresh-pages-authorization.json" "$PGDATABASE" "$ROOT" "$dump_hash" <<'PYFRESH'
+import json,os,sys,uuid
+from pathlib import Path
+path=Path(sys.argv[1])
+expected={'schema_version':1,'mode':'fresh-pages','database':sys.argv[2],'project_root':sys.argv[3],'dump_sha256':sys.argv[4]}
+if path.is_symlink(): raise SystemExit('Guard làm mới không được là symlink.')
+if path.exists():
+    actual=json.loads(path.read_text())
+    if any(actual.get(key)!=value for key,value in expected.items()): raise SystemExit('Guard làm mới không khớp bản nhập hiện tại.')
+else:
+    expected['token']=str(uuid.uuid4())
+    with os.fdopen(os.open(path,os.O_WRONLY|os.O_CREAT|os.O_EXCL,0o600),'w') as stream:
+        stream.write(json.dumps(expected)+'\n')
+PYFRESH
+    chown root:www "$CONF/fresh-pages-authorization.json"
+    chmod 0640 "$CONF/fresh-pages-authorization.json"
+    app_php artisan tram:baota-fresh-pages --apply --guard-file="$CONF/fresh-pages-authorization.json" --rebuild
+fi
+# Purge recoverable HTML only; a large catalog rebuild belongs to serving/background work.
+runuser -u www -- env PUBLIC_HTML_CACHE_ENABLED=false "$PHP" artisan tram:public-cache --purge
+app_php artisan config:cache
+app_php artisan route:cache
+app_php artisan view:cache
+app_php artisan tram:health
+step 'Kết nối Nginx với PHP-FPM đang có trong BaoTa.'
+vhost=/www/server/panel/vhost/nginx/$DOMAIN.conf
+had_vhost=0
+if [[ -f $vhost ]]; then
+    had_vhost=1
+    cp -p "$vhost" "$BUILD/nginx-before-install.conf"
+    cp -p "$vhost" "$STATE/backups/nginx-$(date -u +%Y%m%dT%H%M%SZ).conf"
+fi
+install -m 0644 "$CONF/nginx/nginx-site.conf" "$vhost"
+restore_nginx_before_install() {
+    if ((had_vhost)); then cp -p "$BUILD/nginx-before-install.conf" "$vhost"; else rm -f "$vhost"; fi
+    if ((had_cache_include)); then
+        cp -p "$BUILD/cache-include-before-install.conf" "$CONF/nginx/public-html-cache-location.conf"
+    else
+        rm -f "$CONF/nginx/public-html-cache-location.conf"
+    fi
+}
+if ! "$NGINX" -t; then
+    restore_nginx_before_install
+    fail 'Nginx chưa nhận cấu hình mới; đã khôi phục vhost trước lượt cài.'
+fi
+systemctl enable tram-seo-worker tram-seo-crawler tram-seo-scheduler
+systemctl restart tram-seo-worker tram-seo-crawler tram-seo-scheduler
+if command -v getenforce >/dev/null && [[ $(getenforce) != Disabled ]]; then
+    restorecon -R "$ROOT/application/storage" "$ROOT/application/bootstrap/cache"
+fi
+"$NGINX" -s reload
+ready=0
+for _attempt in {1..30}; do
+    if curl -fsS --max-time 5 -H "Host: $DOMAIN" http://127.0.0.1/readyz >/dev/null; then ready=1; break; fi
+    sleep 1
+done
+if ((!ready)); then
+    restore_nginx_before_install
+    "$NGINX" -t && "$NGINX" -s reload
+    fail "HTTP /readyz chưa đạt; đã khôi phục vhost/include cũ. Xem log PHP BaoTa và Nginx; open_basedir cần cho phép $ROOT/application."
+fi
+healthy=0
+for _attempt in {1..35}; do
+    if app_php artisan tram:health --scheduler >/dev/null 2>&1 && RUNTIME_WORKER_ROLE=publish app_php artisan tram:health --worker >/dev/null 2>&1 && RUNTIME_WORKER_ROLE=crawl app_php artisan tram:health --worker >/dev/null 2>&1; then healthy=1; break; fi
+    sleep 2
+done
+((healthy)) || fail 'Chưa thấy đủ heartbeat của worker/crawler/scheduler; xem journalctl cho các dịch vụ tram-seo-*.'
+printf '%s\n' "$(date -u +%Y%m%dT%H%M%SZ)" > "$STATE/install-complete"
+# Retire only the old installer-owned pool after BaoTa serves HTML and jobs are healthy.
+if [[ -f /etc/systemd/system/tram-seo-php.service ]] && grep -Fq -- '--fpm-config /etc/tram-seo/php-fpm.conf' /etc/systemd/system/tram-seo-php.service; then
+    systemctl disable --now tram-seo-php
+fi
+printf '\nCài đặt và HTTP readiness đã đạt. Admin: %s/admin\n' "$(if [[ -n $TLS_CERT ]]; then printf https; else printf http; fi)://$DOMAIN"
+printf 'Tạo admin mới khi cần: cd %q && sudo -u www %q artisan tram:admin-create --global\n' "$ROOT/application" "$PHP"
+printf 'Sao lưu trước migration: %s\n' "$backup"

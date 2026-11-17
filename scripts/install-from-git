@@ -1,0 +1,199 @@
+#!/usr/bin/env bash
+# Download a verified runtime release into a new directory, then use BaoTa's installer.
+set -Eeuo pipefail
+umask 022
+command -v python3 >/dev/null || { printf 'Cần Python 3: dnf install -y python3\n' >&2; exit 1; }
+exec python3 -c 'import os; exec(compile(os.fdopen(3).read(), "<install-from-git>", "exec"))' "$@" 3<<'PY'
+import argparse
+import ctypes
+import hashlib
+import os
+from pathlib import Path, PurePosixPath
+import re
+import shutil
+import subprocess
+import sys
+import tarfile
+import tempfile
+from urllib.parse import urlsplit
+
+
+def fail(message):
+    raise ValueError(message)
+
+
+def repository_url(value):
+    if any(ord(char) < 33 or ord(char) == 127 for char in value):
+        fail('URL Git không được chứa khoảng trắng hoặc ký tự điều khiển.')
+    if value.startswith(('https://', 'ssh://')):
+        parsed = urlsplit(value)
+        if not parsed.hostname or parsed.query or parsed.fragment or parsed.password is not None:
+            fail('URL Git không hợp lệ hoặc chứa thông tin đăng nhập.')
+        if parsed.scheme == 'https' and parsed.username is not None:
+            fail('Không đặt token hoặc tài khoản trong URL HTTPS; dùng SSH hoặc credential helper.')
+        if parsed.scheme == 'ssh' and parsed.username is not None and not re.fullmatch(r'[A-Za-z0-9_-]+', parsed.username):
+            fail('Tên tài khoản SSH không hợp lệ.')
+        try:
+            parsed.port
+        except ValueError:
+            fail('Cổng Git không hợp lệ.')
+        if not re.fullmatch(r'[A-Za-z0-9.:-]+', parsed.hostname) or not re.fullmatch(r'/[A-Za-z0-9_./~-]+', parsed.path):
+            fail('Host hoặc đường dẫn Git không hợp lệ.')
+        return value
+    if re.fullmatch(r'[A-Za-z0-9_-]+@[A-Za-z0-9.-]+:[A-Za-z0-9_./~-]+', value):
+        return value
+    fail('Chỉ nhận URL HTTPS hoặc SSH; không nhận đường dẫn local, file:// hay git://.')
+
+
+def relative_path(value):
+    path = PurePosixPath(value)
+    if not value or path.is_absolute() or any(part in ('', '.', '..') for part in value.split('/')) or '\\' in value:
+        fail('Gói Git chứa đường dẫn không an toàn.')
+    if any(part.lower() == '.git' for part in path.parts):
+        fail('Gói runtime không được chứa thư mục .git.')
+    return path
+
+
+def run_git(arguments, directory=None, output=None):
+    command = ['git', '-c', 'core.hooksPath=/dev/null', '-c', 'protocol.ext.allow=never']
+    if directory is not None:
+        command += ['-C', str(directory)]
+    env = dict(os.environ, GIT_TERMINAL_PROMPT='0')
+    result = subprocess.run(command + arguments, stdout=output or subprocess.PIPE, stderr=subprocess.PIPE, env=env)
+    if result.returncode:
+        fail('Git không tải được phiên bản yêu cầu. Kiểm tra URL, --ref và quyền SSH/credential helper của tài khoản đang chạy.')
+    return result.stdout.decode().strip() if output is None else None
+
+
+def unpack(archive, release):
+    seen = set()
+    with tarfile.open(archive) as source:
+        for member in source:
+            name = member.name.rstrip('/') if member.isdir() else member.name
+            relative = relative_path(name)
+            if name in seen:
+                fail('Gói Git chứa đường dẫn trùng.')
+            seen.add(name)
+            target = release / relative
+            if member.isdir():
+                target.mkdir(parents=True, exist_ok=True)
+            elif member.isfile():
+                target.parent.mkdir(parents=True, exist_ok=True)
+                with source.extractfile(member) as incoming, target.open('xb') as outgoing:
+                    shutil.copyfileobj(incoming, outgoing)
+                target.chmod(0o755 if member.mode & 0o111 else 0o644)
+            else:
+                fail('Gói runtime không được chứa symlink, hardlink hoặc file đặc biệt.')
+
+
+def verify(release):
+    checksum = release / 'SOURCE_SHA256SUMS'
+    if not checksum.is_file():
+        fail('Git thiếu SOURCE_SHA256SUMS; cần đẩy gói runtime đã tạo, không dùng checkout phát triển.')
+    listed = set()
+    for line in checksum.read_text(encoding='utf-8').splitlines():
+        match = re.fullmatch(r'([a-f0-9]{64})  (.+)', line)
+        if not match:
+            fail('SOURCE_SHA256SUMS không đúng định dạng.')
+        digest, name = match.groups()
+        relative = relative_path(name)
+        if name in listed or name == 'SOURCE_SHA256SUMS':
+            fail('SOURCE_SHA256SUMS có file trùng hoặc tự tham chiếu.')
+        listed.add(name)
+        path = release / relative
+        if not path.is_file():
+            fail('Gói Git thiếu file được liệt kê trong SOURCE_SHA256SUMS.')
+        actual = hashlib.sha256()
+        with path.open('rb') as stream:
+            for block in iter(lambda: stream.read(1024 * 1024), b''):
+                actual.update(block)
+        if actual.hexdigest() != digest:
+            fail('Nội dung file không khớp SOURCE_SHA256SUMS: ' + name)
+    actual_files = {path.relative_to(release).as_posix() for path in release.rglob('*') if path.is_file()}
+    if actual_files != listed | {'SOURCE_SHA256SUMS'}:
+        fail('Git có file chưa được kiểm tra trong SOURCE_SHA256SUMS; cần tạo lại gói runtime.')
+    required = {'scripts/install-baota', 'scripts/baota-config.py', 'scripts/baota-preservation.py',
+                'application/artisan', 'application/composer.json', 'application/composer.lock', 'RELEASE_MANIFEST.json'}
+    if not required <= listed or not (release / 'infra/baota').is_dir():
+        fail('Gói Git thiếu thành phần cài đặt BaoTa.')
+
+
+def publish(source, destination):
+    # Exclusive rename prevents even an empty directory created concurrently from being replaced.
+    library = ctypes.CDLL(None, use_errno=True)
+    if sys.platform.startswith('linux') and hasattr(library, 'renameat2'):
+        function = library.renameat2
+        function.argtypes = [ctypes.c_int, ctypes.c_char_p, ctypes.c_int, ctypes.c_char_p, ctypes.c_uint]
+        result = function(-100, os.fsencode(source), -100, os.fsencode(destination), 1)
+    elif sys.platform == 'darwin' and hasattr(library, 'renamex_np'):
+        function = library.renamex_np
+        function.argtypes = [ctypes.c_char_p, ctypes.c_char_p, ctypes.c_uint]
+        result = function(os.fsencode(source), os.fsencode(destination), 4)
+    else:
+        fail('Hệ điều hành không hỗ trợ tạo thư mục đích an toàn; hãy chạy trên CentOS Stream 9/10.')
+    if result:
+        raise OSError(ctypes.get_errno(), 'Không thể tạo đích mới; kiểm tra quyền và bảo đảm đích chưa tồn tại.')
+
+
+def main():
+    parser = argparse.ArgumentParser(prog='install-from-git', description='Tải gói runtime từ Git rồi cài bằng các dịch vụ BaoTa có sẵn.',
+        epilog='Ví dụ: bash scripts/install-from-git --repo https://github.com/dinhtanhd/seo-seo.git --ref main --dest /www/wwwroot/tram-seo -- --domain admin.example.com\n'
+               'Git riêng tư cần quyền SSH hoặc credential helper của chính tài khoản chạy lệnh. Không đưa mật khẩu/token vào URL. '
+               'Tham số sau -- chuyển nguyên vẹn đến install-baota; không thay worker PHP và không xóa dữ liệu mặc định.')
+    parser.add_argument('--repo', required=True, help='URL HTTPS không có credential, hoặc URL SSH')
+    parser.add_argument('--ref', default='main', help='Branch, tag hoặc commit SHA (mặc định: main)')
+    parser.add_argument('--dest', default='/www/wwwroot/tram-seo', help='Thư mục mới, đường dẫn tuyệt đối')
+    parser.add_argument('--download-only', action='store_true', help='Chỉ tải và kiểm tra gói, chưa chạy cài đặt')
+    argv = sys.argv[1:]
+    split = argv.index('--') if '--' in argv else len(argv)
+    options = parser.parse_args(argv[:split])
+    native = argv[split + 1:]
+    repository = repository_url(options.repo)
+    if not re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9_./-]*', options.ref) or '..' in options.ref:
+        fail('--ref không hợp lệ; chỉ dùng branch, tag hoặc commit SHA.')
+    if not re.fullmatch(r'/[A-Za-z0-9_./-]+', options.dest) or any(part in ('.', '..') for part in options.dest.split('/')):
+        fail('--dest cần đường dẫn tuyệt đối không có khoảng trắng hoặc thành phần . / ...')
+    destination = Path(options.dest)
+    if os.path.lexists(destination):
+        fail('Đích đã tồn tại; dừng để giữ nguyên code và dữ liệu. Chọn thư mục mới bằng --dest.')
+    if not destination.parent.is_dir():
+        fail('Thư mục cha của --dest chưa tồn tại. Tạo thư mục cha trước khi cài.')
+    if not shutil.which('git'):
+        fail('Cần Git: dnf install -y git')
+    run_git(['check-ref-format', '--allow-onelevel', options.ref])
+    with tempfile.TemporaryDirectory(prefix='.tram-seo-fetch-', dir=destination.parent) as temporary:
+        stage = Path(temporary)
+        repository_dir = stage / 'repository'
+        release = stage / 'release'
+        release.mkdir()
+        print('Đang tải gói Git và kiểm tra checksum...', flush=True)
+        run_git(['init', '--bare', str(repository_dir)])
+        run_git(['remote', 'add', 'origin', repository], repository_dir)
+        run_git(['fetch', '--depth=1', '--no-tags', 'origin', options.ref], repository_dir)
+        commit = run_git(['rev-parse', '--verify', 'FETCH_HEAD^{commit}'], repository_dir)
+        if not re.fullmatch(r'[a-f0-9]{40,64}', commit):
+            fail('Không xác định được commit đã tải.')
+        archive = stage / 'release.tar'
+        with archive.open('wb') as stream:
+            run_git(['archive', '--format=tar', commit], repository_dir, stream)
+        unpack(archive, release)
+        verify(release)
+        publish(release, destination)
+    print('Đã kiểm tra gói. Commit Git: ' + commit, flush=True)
+    print('Thư mục: ' + str(destination), flush=True)
+    if options.download_only:
+        print('Chỉ tải code; chưa cài dịch vụ hoặc thay đổi dữ liệu.', flush=True)
+        return 0
+    result = subprocess.run(['bash', str(destination / 'scripts/install-baota'), *native], cwd=destination)
+    if result.returncode:
+        print('Cài đặt chưa thành công. Code đã kiểm tra được giữ tại ' + str(destination) +
+              '; sửa điều kiện còn thiếu rồi chạy lại scripts/install-baota tại đó.', file=sys.stderr)
+    return result.returncode
+
+
+try:
+    sys.exit(main())
+except (ValueError, OSError, tarfile.TarError) as error:
+    print('Lỗi: ' + str(error), file=sys.stderr)
+    sys.exit(1)
+PY

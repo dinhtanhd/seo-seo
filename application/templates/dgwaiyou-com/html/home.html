@@ -1,0 +1,301 @@
+<div data-tram-page="home" id="mytheme-runtime" data-tram-hide-empty-sections="true"><h1 class="source-sr-only">{{seo.h1}}</h1>
+        <header class=" myui-header__top clearfix" id="header-top">
+            <div class=" container">
+                <div class=" row">
+                    <div class=" myui-header__logo">
+                        <a class="wR0t4v logo" href="{{url.home}}">
+                            <span>{{site.name}}</span>
+                        </a>
+                    </div>
+                    <ul class=" myui-header__list"><li class="active"><a href="{{url.home}}">首页</a></li>{{#each navigation}}<li class="{{#if nav_item.current}}active{{/if}}">
+                            <a class=" text-333" href="{{nav_item.path}}" title="{{nav_item.name}}">{{nav_item.name}}</a>
+                        </li>{{/each}}<li class=" dropdown-hover">
+                            <a class=" text-red" href="#mytheme-runtime">全部分类 <i class=" fa fa-angle-down"></i></a>
+                            <div class=" vip-text-logo1">HOT</div>
+        
+                            <div class=" dropdown-box hover-drop fadeInDown clearfix">{{#each sections}}<div class=" drop-item">
+                                    <div class=" item-left">
+                                        {{#if section.icon_url}}<img src="{{section.icon_url}}" width="15" height="15" alt="栏目">{{/if}}
+        
+                                        <a href="{{section.path}}">{{section.name}}</a>
+                                    </div>
+                                    <ul class=" item-list hidden-xs">{{#each section.children}}<li><a href="{{sub_category.path}}" title="{{sub_category.name}}">{{sub_category.name}}</a></li>{{/each}}</ul>
+                                </div>{{/each}}</div>
+                        </li></ul>
+        
+                    <ul class=" myui-header__search search-box">
+                        <li class=" search-item dropdown-hover">
+                            <form id="search" name="search" method="get" action="{{url.search}}">
+                                <input type="text" id="wd-h" name="q" class=" search_wd form-control" value="{{search.query}}" placeholder="请输入关键词" autocomplete="off"  maxlength="100" aria-label="搜索影片"/>
+                                <a class=" hot hidden-xs" href="{{url.list}}"><i class=" fa fa-fire"></i> 热播榜</a>
+                                <button class=" submit search_submit" id="searchbutton" type="submit">
+                                    <i class=" fa fa-search"></i> 搜索
+                                </button>
+                            </form>
+        
+                            <div class=" search-hot dropdown-box fadeInDown">
+                                <div class=" item">
+                                    <p class=" text-muted">热门搜索</p>
+                                    {{#each featured_movies}}<p>
+                                        <a class=" text-333" href="{{movie.path}}" title="{{movie.title}}"><span class="text-muted pull-right">{{movie.remarks}}</span><span class="badge {{movie.rank_class}}">{{movie.rank}}</span>{{movie.title}}</a
+                                        >
+                                    </p>{{/each}}
+                                </div>
+                            </div>
+                        </li>
+                        <a class=" search-close visible-xs" href="#mytheme-runtime"><i class=" fa fa-close"></i></a>
+                    </ul>
+        
+                    <ul class=" myui-header__user">
+                        <li class=" visible-xs">
+                            <a class=" open-search" href="#mytheme-runtime"><i class=" fa fa-search"></i></a>
+                        </li>
+                        <li class=" hist dropdown-hover">
+                            <a href="#mytheme-runtime" title="播放记录" data-tram-action="history-toggle"> <i class=" fa fa-clock-o"></i></a>
+        
+                            <div class=" dropdown-box fadeInDown">
+                                <div class=" item clearfix">
+                                    <p class=" text-muted">
+                                        <a class=" text-red pull-right" href="#mytheme-runtime" data-tram-action="history-clear">[清空]</a
+                                        >
+                                        播放记录
+                                    </p>
+        
+                                    <div class=" history-list clearfix">
+                                        
+                                    </div>
+                                </div>
+                            </div>
+                        </li>
+                        <li>
+                            <a href="{{url.list}}" title="热播榜"><i class=" fa fa-fire"></i></a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </header>
+        
+        <section class="ibanner">
+            <form id="search" name="search" method="get" action="{{url.search}}" class="hidden-xs">
+                <div class="ibanner-search b-banner dropdown-hover">
+                    <input class="search_wd b-banner-search-input home-search-inp ibanner-search-input ss-index-fl-id" type="text" id="wd" name="q" placeholder="请输入关键词" autocomplete="off"  value="{{search.query}}" maxlength="100" aria-label="搜索影片"/>
+                    <button class="ibanner-search-btn but-search" id="searchbutton" type="submit">
+                        <i class="fa fa-search"></i> 搜索
+                    </button>
+
+                    <div class="search-hot-big dropdown-box fadeInDown">
+                        <div class="item">
+                            <p class="text-muted">热门搜索</p>
+                            {{#each featured_movies}}<p>
+                                <a class="text-333" href="{{movie.path}}" title="{{movie.title}}"
+                                    ><span class="text-muted pull-right">{{movie.remarks}}</span><span class="badge {{movie.rank_class}}">{{movie.rank}}</span>{{movie.title}}</a
+                                >
+                            </p>{{/each}}
+                        </div>
+                    </div>
+                </div>
+            </form>
+            
+            <div class="swiper-container ibanner-swiper swiper-no-swiping swiper-container-initialized swiper-container-horizontal" style="cursor: grab">
+                <div class="swiper-wrapper" style="transition-duration: 0ms; transform: translate3d(0px, 0px, 0px)">{{#each featured_movies}}<div class="swiper-slide">
+                        <a href="{{movie.path}}" target="_blank" title="{{movie.title}}">
+                            <div class="swiper-lazy swiper-slide-item swiper-lazy-loaded" data-original="{{movie.poster_url}}"></div>
+                        </a>
+                    </div>{{/each}}</div>
+                <div class="swiper-pagination swiper-pagination-clickable swiper-pagination-bullets"></div>
+                <div class="swiper-button-prev"></div>
+                <div class="swiper-button-next"></div>
+                <span class="swiper-notification" aria-live="assertive" aria-atomic="true"></span>
+            </div>
+            <div class="ibanner-back"></div>
+        </section>
+        
+        <div class="container top-up120">
+            <!-- 推荐 -->
+            <div class="myui-panel sort clearfix">
+                <div class="myui-panel-box myui-panel-bg2 clearfix">
+                    <div class="vods-box clearfix">
+                        <div class="myui-panel_hd">
+                            <div class="myui-panel__head clearfix">
+                                <span class="text-muted more pull-right"
+                                    >最近更新<span class="split-line"></span
+                                    ><a href="{{url.list}}">最近更新 <i class="fa fa-angle-right"></i></a
+                                ></span>
+                                <h3 class="title">剧集推荐</h3>
+                            </div>
+                        </div>
+
+                        <div class="swiper-container myui-panel_bd clearfix">
+                            <ul class="swiper-wrapper myui-vodlist clearfix">{{#each featured_movies}}<li class="swiper-slide col-lg-8 col-md-8 col-sm-4 col-xs-3">
+                                    <div class="myui-vodlist__box">
+                                        <a class="myui-vodlist__thumb" href="{{movie.path}}" title="{{movie.title}}" data-original="{{movie.poster_url}}">
+                                            <span class="play hidden-xs"></span>
+                                            <span class="pic-tag pic-tag-top" style="background-color: #ff9900">{{#if movie.score}}{{movie.score}}分{{/if}}</span>
+                                            <span class="pic-text text-right">{{movie.remarks}}</span>
+                                        </a>
+                                        <div class="myui-vodlist__detail">
+                                            <h4 class="title text-overflow">
+                                                <a href="{{movie.path}}" title="{{movie.title}}">{{movie.title}}</a>
+                                            </h4>
+                                            <p class="text text-overflow text-muted hidden-xs"><span class="text-muted">主演：</span>{{movie.actors}}</p>
+                                        </div>
+                                    </div>
+                                </li>{{else}}<li class="col-pd text-muted">暂无影片。</li>{{/each}}</ul>
+                            <!-- Add Arrows -->
+                            <div class="swiper-button-next"></div>
+                            <div class="swiper-button-prev"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+
+            
+            <div class="row clearfix">
+                <!-- 列表 -->
+                {{#each sections}}<div class="myui-panel myui-panel-bg2 clearfix">
+                    <div class="myui-panel-box clearfix">
+                        <div class="myui-panel_bd clearfix">
+                            <div class="myui-panel_hd">
+                                <div class="myui-panel__head clearfix">
+                                    <h3 class="title">{{section.name}}</h3>
+                                    <a class="more text-muted" href="{{section.path}}"
+                                        >更多 <i class="fa fa-angle-right"></i
+                                    ></a>
+                                </div>
+                            </div>
+                            <ul class="myui-vodlist clearfix movie-list">{{#each section.movies}}<li class="col-lg-6 col-md-6 col-sm-4 col-xs-3">
+                                    <div class="myui-vodlist__box">
+                                        <a class="myui-vodlist__thumb lazyload" href="{{movie.path}}" title="{{movie.title}}" data-original="{{movie.poster_url}}">
+                                            <span class="play hidden-xs"></span>
+                                            <span class="pic-tag pic-tag-top" style="background-color: #ff9900">{{#if movie.score}}{{movie.score}}分{{/if}}</span>
+                                            <span class="pic-text text-right">{{movie.remarks}}</span>
+                                        </a>
+                                        <div class="myui-vodlist__detail">
+                                            <h4 class="text-overflow">
+                                                <a href="{{movie.path}}" title="{{movie.title}}">{{movie.title}}</a>
+                                            </h4>
+                                            <p class="text text-overflow text-muted hidden-xs"><span class="text-muted">主演：</span>{{movie.actors}}</p>
+                                        </div>
+                                    </div>
+                                </li>{{else}}<li class="col-pd text-muted">暂无影片。</li>{{/each}}</ul>
+                        </div>
+                    </div>
+                </div>{{/each}}
+                
+
+                <!-- 排行 -->
+                <div class="rank-box hidden-xs clearfix">
+                    {{#each rank_sections}}<div class="col-lg-4 col-md-4 col-sm-2 col-xs-1">
+                        <div class="myui-panel myui-panel-bg2 col-pd radius-4 clearfix">
+                            <div class="myui-panel_hd">
+                                <div class="myui-panel__head active bottom-line clearfix">
+                                    <h3 class="title">{{section.name}}{{section.rank_label}}</h3>
+                                    <a
+                                        class="more text-muted"
+                                        href="{{section.path}}"
+                                        >更多 <i class="fa fa-angle-right"></i
+                                    ></a>
+                                </div>
+                            </div>
+                            
+                            <div class="myui-panel_bd clearfix">
+                                <ul class="myui-vodlist__media active col-pd clearfix">{{#each section.featured_movies}}<li>
+                                        <div class=" thumb">
+                                            <a class="myui-vodlist__thumb img-xs-70" href="{{movie.path}}" title="{{movie.title}}"
+                                             data-original="{{movie.poster_url}}">{{movie.title}}</a>
+                                        </div>
+                                        <div class="detail detail-side">
+                                            <h4 class="title">
+                                                <a href="{{movie.path}}" title="{{movie.title}}">{{movie.title}}</a
+                                                >
+                                            </h4>
+                                            <p class="font-12">{{movie.actors}}</p>
+                                            <p class="font-12 margin-0"><span class="text-muted">主演：</span>{{movie.actors}}</p>
+                                        </div>
+                                    </li>{{else}}<li class="col-pd text-muted">暂无影片。</li>{{/each}}</ul>
+                                
+                                {{#if section.rank_movies}}<ul class="myui-vodlist__text col-pd clearfix">{{#each section.rank_movies}}<li>
+                                        <a href="{{movie.path}}" title="{{movie.title}}"><span class="text-muted pull-right">{{movie.remarks}}</span><span class="badge {{movie.rank_class}}">{{movie.rank}}</span>{{movie.title}}</a>
+                                    </li>{{/each}}</ul>{{/if}}
+                            </div>
+                        </div>
+                    </div>{{/each}}
+                </div>
+            </div>
+        </div>
+        
+
+        <div class=" myui-foot">
+            <div class=" container">
+                <div class=" row">
+                    <div class="myui-panel clearfix tram-friend-links" data-tram-friend-links="true">
+                        <div class=" myui-panel-box clearfix">
+                            <div class=" myui-panel_hd">
+                                <div class=" myui-panel__head clearfix">
+                                    <h3 class=" title">友情链接</h3>
+                                </div>
+                            </div>
+                            <div class=" myui-panel_bd clearfix">
+                                <div class=" col-xs-1">
+                                    <ul class=" myui-link__text clearfix">{{#each friend_links}}<li><a href="{{friend_link.url}}" title="{{friend_link.text}}" target="_blank" rel="noopener noreferrer">{{friend_link.text}}</a></li>{{/each}}</ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- 友链 -->
+                    <div
+                        class="YwAvTk seo-marquee-container"
+                        style="overflow: hidden; white-space: nowrap; position: relative; width: 100%"
+                    >
+                        <div
+                            id="marquee_6aae4d2cb08dd"
+                            style="display: inline-block; white-space: nowrap; position: relative"
+                        >
+                            <p class=" text-muted text-center" style="margin-top: 10px; margin-bottom: 10px">{{content.title}} · {{#each related_links}}<a href="{{link.url}}">{{link.text}}</a> {{/each}}</p>
+                        </div>
+                    </div>
+                    
+                    <div class=" col-pd text-center">
+                        <p>
+                            <a href="{{url.home}}">{{site.name}}</a>提示您：请支持正版！本站所有视频均属无人值守全自动采集，本站不参与存储、录制及上传，所列内容仅作宽带测试，如有侵权请来信告知，我们将在第一时间处理，谢谢！
+                        </p>
+                        <p>
+                            <a target="_blank" href="/sitemap.xml">百度地图</a
+                            ><span class=" split-line"></span>
+                            <a target="_blank" href="/sitemap.xml">搜狗地图</a><span class=" split-line"></span>
+                            <a target="_blank" href="/sitemap.xml">神马地图</a>
+                        </p>
+                        <p class=" margin-0">© 2026 <a href="{{url.home}}">{{site.name}}</a></p>
+                        <div class="4dVSuh tongji">
+                            
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <ul class=" myui-extra clearfix">
+            <li>
+                <a class=" backtop" href="#mytheme-runtime" title="返回顶部" style="display: none"
+                     data-tram-action="top"><i class=" fa fa-angle-up"></i
+                ></a>
+            </li>
+            <li>
+                <a class=" btnskin" href="#mytheme-runtime" title="切换皮肤"><i class=" fa fa-windows"></i></a>
+            </li>
+            <li class=" visible-xs">
+                <a class="g5Q2T6 open-share" href="#mytheme-runtime" title="分享给朋友"
+                     data-tram-action="copy"><i class=" fa fa-share-alt"></i
+                ></a>
+            </li>
+            <li>
+                <a href="#mytheme-runtime" title="留言反馈"><i class=" fa fa-commenting"></i></a>
+            </li>
+        </ul>
+        
+        
+
+        
+        
+    </div>

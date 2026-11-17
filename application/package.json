@@ -1,0 +1,27 @@
+{
+    "$schema": "https://www.schemastore.org/package.json",
+    "private": true,
+    "type": "module",
+    "scripts": {
+        "build": "vite build && vite build --config vite.player.config.js && vite build --config vite.fanmulu.config.js",
+        "dev": "vite",
+        "build:player": "vite build --config vite.player.config.js",
+        "test:player": "node --test tests/JavaScript/movie-player.test.mjs",
+        "build:fanmulu": "vite build --config vite.fanmulu.config.js",
+        "test:fanmulu": "node --test tests/JavaScript/fanmulu-runtime.test.mjs"
+    },
+    "devDependencies": {
+        "@tailwindcss/vite": "^4.0.0",
+        "concurrently": "^10.0.3",
+        "laravel-vite-plugin": "^3.1",
+        "tailwindcss": "^4.0.0",
+        "vite": "^8.0.0"
+    },
+    "optionalDependencies": {
+        "@laravel/multiplex": "^0.4.1"
+    },
+    "dependencies": {
+        "alpinejs": "^3.14.9",
+        "hls.js": "1.7.3"
+    }
+}

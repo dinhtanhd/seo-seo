@@ -1,0 +1,34 @@
+{
+  "schema_version": 2,
+  "slug": "dgwaiyou-com",
+  "name": "dgwaiyou.com · 悠悠影院 · MYTHEME26",
+  "description": "Chuyển cấu trúc MYTHEME26 từ dgwaiyou.com; đầy đủ home/list/detail/play/search, dữ liệu và URL lấy từ Trạm SEO.",
+  "author": "Trạm SEO",
+  "runtime": {
+    "profile": "mytheme26-original-v1",
+    "body_classes": [
+      "active"
+    ],
+    "stylesheets": [
+      "default26/template/mytheme/statics/css/mytheme-font.css",
+      "default26/template/mytheme/statics/css/mytheme-ui.css",
+      "default26/template/mytheme/statics/css/mytheme-site.css",
+      "default26/template/mytheme/statics/css/mytheme-color1.css",
+      "default26/template/mytheme/statics/css/swiper.min.css"
+    ],
+    "scripts": [
+      "default26/template/mytheme/statics/js/jquery.min.js",
+      "default26/template/mytheme/statics/js/mytheme-site.js",
+      "default26/template/mytheme/statics/js/swiper.min.js",
+      "js/tram-imported-runtime.js"
+    ],
+    "icons": [
+      {
+        "rel": "shortcut icon",
+        "asset": "d02a42d9cb3dec9320e5f550278911c7.png",
+        "type": "image/png"
+      }
+    ],
+    "viewport": "width=device-width, initial-scale=1.0"
+  }
+}

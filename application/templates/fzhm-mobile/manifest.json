@@ -1,0 +1,58 @@
+{
+  "schema_version": 2,
+  "slug": "fzhm-mobile",
+  "name": "FZHM Mobile · Rạp phim di động",
+  "description": "Cấu trúc giao diện FZHM sạch: giữ đầy đủ năm view, CSS/JS đã review, font và ảnh UI; bỏ thẻ/thuộc tính/class nhiễu và poster nguồn khỏi gói mới. Nội dung, tên phim và poster lấy từ dữ liệu website.",
+  "author": "Trạm SEO",
+  "runtime": {
+    "profile": "fzhm-original-v1",
+    "stylesheets": [
+      "default3/assets/font/iconfont.css",
+      "default3/assets/css/stui_block.css",
+      "default3/assets/css/stui_block_color.css",
+      "default3/assets/css/stui_default.css",
+      "css/pagination.css",
+      "default3/assets/css/tram_runtime.css"
+    ],
+    "scripts": [
+      "default3/assets/js/jquery.min.js",
+      "default3/assets/js/stui_default.js",
+      "default3/assets/js/stui_block.js"
+    ],
+    "view_scripts": {
+      "play": [
+        "default3/assets/js/history.js",
+        "players/playerconfig.js",
+        "players/player.js"
+      ]
+    },
+    "view_stylesheets": {},
+    "icons": [
+      {
+        "rel": "apple-touch-icon-precomposed",
+        "asset": "d02a42d9cb3dec9320e5f550278911c7.png",
+        "sizes": "180x180"
+      },
+      {
+        "rel": "shortcut icon",
+        "asset": "d02a42d9cb3dec9320e5f550278911c7.png",
+        "type": "image/x-icon"
+      }
+    ],
+    "meta": [
+      {
+        "http-equiv": "Cache-Control",
+        "content": "no-transform"
+      },
+      {
+        "http-equiv": "Cache-Control",
+        "content": "no-siteapp"
+      },
+      {
+        "name": "renderer",
+        "content": "webkit|ie-comp|ie-stand"
+      }
+    ],
+    "viewport": "width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0"
+  }
+}

@@ -1,0 +1,70 @@
+# Managed by scripts/install-baota for Trạm SEO.
+# BaoTa loads this vhost file inside http, so maps are included once here.
+include @ROOT@/infra/nginx/public-html-cache.conf;
+
+server {
+    listen 80;
+    @TLS_DIRECTIVES@
+    server_name @SERVER_NAMES@;
+    root @ROOT@/application/public;
+    index index.php;
+    charset utf-8;
+    set $tram_cache_database @DB_NAME@;
+    client_max_body_size 24m;
+    access_log /www/wwwlogs/@DOMAIN@.log;
+    error_log /www/wwwlogs/@DOMAIN@.error.log;
+
+    location ^~ /.well-known/acme-challenge/ {
+        try_files $uri =404;
+    }
+    add_header X-Content-Type-Options nosniff always;
+    add_header Referrer-Policy strict-origin-when-cross-origin always;
+
+    location = / {
+        if ($tram_public_cache_eligible) { rewrite ^ /__tram_public_html_cache last; }
+        rewrite ^ /index.php last;
+    }
+    location = /robots.txt {
+        rewrite ^ /index.php last;
+    }
+    location / {
+        try_files $uri $uri/ @tram_public;
+    }
+    location @tram_public {
+        if ($tram_public_cache_eligible) { rewrite ^ /__tram_public_html_cache last; }
+        rewrite ^ /index.php last;
+    }
+    location ^~ /theme-bundles/ {
+        rewrite ^ /index.php last;
+    }
+    location ^~ /__tram_ads/ {
+        rewrite ^ /index.php last;
+    }
+    include /etc/tram-seo/nginx/public-html-cache-location.conf;
+    location = /index.php {
+        fastcgi_buffer_size 16k;
+        fastcgi_buffers 8 16k;
+        if (-f @ROOT@/application/storage/app/public-html$tram_public_runtime_advertising_cache_file) { rewrite ^ /__tram_public_html_cache last; }
+        if (-f @ROOT@/application/storage/app/public-html$tram_public_advertising_cache_file) { rewrite ^ /__tram_public_html_cache last; }
+        if (-f @ROOT@/application/storage/app/public-html$tram_public_runtime_cache_file) { rewrite ^ /__tram_public_html_cache last; }
+        if (-f @ROOT@/application/storage/app/public-html$tram_public_cache_file) { rewrite ^ /__tram_public_html_cache last; }
+        include /www/server/nginx/conf/fastcgi_params;
+        fastcgi_param HTTPS $https if_not_empty;
+        fastcgi_param SCRIPT_FILENAME $document_root/index.php;
+        fastcgi_param HTTP_PROXY "";
+        fastcgi_param ADMIN_HOSTS @DOMAIN@;
+        fastcgi_param TRAM_PUBLIC_CACHE_ELIGIBLE $tram_public_cache_eligible;
+        fastcgi_pass @PHP_UPSTREAM@;
+        fastcgi_read_timeout 65s;
+    }
+    location ~* \.php$ { rewrite ^ /index.php last; }
+    location ~ /\.(?!well-known).* { deny all; }
+    location ~* \.js$ {
+        expires 7d;
+        try_files $uri /index.php?$query_string;
+    }
+    location ~* \.(css|png|jpg|jpeg|gif|webp|svg|ico|woff2?)$ {
+        expires 7d;
+        try_files $uri @tram_public;
+    }
+}

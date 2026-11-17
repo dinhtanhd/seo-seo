@@ -1,0 +1,181 @@
+<h1 class="tram-theme-sr-only">{{seo.h1}}</h1>
+        <div class=" site-main spimes-container" data-tram-hide-empty-sections="true" data-tram-section-layout="balanced">
+            <div class=" top-bar ewave-headroom headroom--top headroom--not-bottom">
+            
+            <div class=" container clearnav secnav">
+                <div class=" m_nav-list hide-pc"><a href="#tram-runtime-state" data-toggle="offcanvas" class="lines js-m-navlist"><span class="line first-line"></span><span class="line second-line"></span><span class="line third-line"></span></a></div>
+                <div class=" sidebar-offcanvas hide-pc">
+                    <div class=" mobile-sidebar-column">
+                        <ul class="mobile-sidebar-menu ultop"><li class="menu-item"><a href="{{url.home}}">首页</a></li>{{#each sections}}<li class="menu-item">
+                                <a href="{{section.path}}" title="电影"><i class="top-type-icon fa fa-caret-right"></i>{{section.name}}</a>
+                                <ul class="sub-menu">{{#each section.children}}<li class="menu-item"><a href="{{sub_category.path}}" title="{{sub_category.name}}">{{sub_category.name}}</a></li>{{/each}}</ul>
+                            </li>{{/each}}</ul>
+                    </div>
+                </div>
+                <div class=" top-bar-left pull-left navlogo"><a href="{{url.home}}" class="logo box">{{site.name}}</a></div>
+                <div class=" search-warp clearfix">
+                    <form method="get" action="{{url.search}}">
+                        <div class=" search-area">
+                            <div class=" ewave-dropdown ewave-click-dropdown ewave-search-dropdown">
+                                <span class="ewave-search-dropdown-text">视频</span>&nbsp;<i class="fa fa-caret-down"></i>
+                                <div class=" ewave-dropdown-box">
+                                    <ul>
+                                        <li data-action="{{url.search}}"><a href="#tram-runtime-state">视频</a></li>
+                                    </ul>
+                                </div>
+                            </div>
+                            <input class="search-input" id="soblur" placeholder="请输入关键词" type="text" name="q" autocomplete="off" required="" value="{{search.query}}" aria-label="搜索影片">
+                            <ul class="dropdown-menu top_so">
+                                {{#each featured_movies}}<li>
+                                    <a href="{{movie.path}}">{{movie.title}}</a>
+                                </li>{{/each}}
+                            </ul>
+                        </div>
+                        <button class="showhide-search search-form-input" type="submit"><i class="fa fa-search"></i></button>
+                    </form>
+                </div>
+                <div class=" top-bar-right pull-right text-right mobs">
+                    <div class=" top-admin">
+                        <a href="#tram-runtime-state" id="soStats" class="sostats_click"><i id="soico" class="fa fa-search"></i>&nbsp;搜索</a>
+                        <div class=" ewave-history">
+                            <div class="ewave-dropdown ewave-history-dropdown">
+                                <a class="ewave-history-text" href="#tram-runtime-state"><i class="fa fa-history"></i><span>播放记录</span></a>
+                                <div class="ewave-dropdown-box ewave-history-box">
+                                    <div class="ewave-history-empty"><i class="fa fa-minus-circle"></i>&nbsp;暂无记录</div>
+                                </div>
+                            </div>
+                        </div>
+                        <input class="wb-switch wb-no" type="checkbox" data-tram-action="skin">
+                        <div class=" navbar-search socollapse sostats" id="navbar-search">
+                            <div class=" container">
+                                <form method="get" role="search" id="searchform" class="searchform shadow" action="{{url.search}}">
+                                    <div class=" input-group2">
+                                        <div class=" ewave-dropdown ewave-click-dropdown ewave-search-dropdown mobile">
+                                            <span class="ewave-search-dropdown-text">视频</span>&nbsp;<i class="fa fa-caret-down"></i>
+                                            <div class=" ewave-dropdown-box">
+                                                <ul>
+                                                    <li data-action="{{url.search}}"><a href="#tram-runtime-state">视频</a></li>
+                                                </ul>
+                                            </div>
+                                        </div>
+                                        <input type="text" name="q" placeholder="请输入关键词" class="form-control" required="" autocomplete="off" value="{{search.query}}" aria-label="搜索影片">
+                                        <div class=" input-group-append"><button class="btn btn-nostyle" type="submit"><i class="fa fa-search"></i></button></div>
+                                    </div>
+                                </form>
+                            </div>
+                            <div class=" navbar-search-close"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class=" new-header container clearnav hidden-xs">
+                <div class=" white-block"></div>
+                <div class=" white-block white-block2"></div>
+                <div class=" top-bar-left navs">
+                    <nav class="top-bar-navigation ewave-swiper ewave-swiper-nav swiper-initialized swiper-horizontal swiper-pointer-events swiper-free-mode">
+                        <ul class="top-bar-menu swiper-wrapper" id="swiper-wrapper-2b58ae10d65994979" aria-live="polite"><li class="menu-item"><a href="{{url.home}}">首页</a></li>{{#each sections}}<li class="swiper-slide menu-item drop-down swiper-slide-next" role="group" aria-label="2 / 9">
+                                <a href="{{section.path}}"><i class="fa fa-caret-down"></i>{{section.name}}</a>
+                                <ul class="aui-nav-dow">{{#each section.children}}<li><a href="{{sub_category.path}}" title="{{sub_category.name}}">{{sub_category.name}}</a></li>{{/each}}</ul>
+                            </li>{{/each}}</ul>
+                        <span class="swiper-notification" aria-live="assertive" aria-atomic="true"></span>
+                    </nav>
+                </div>
+                <div class=" top-bar-right text-right hidden-sm">
+                    <div class=" top-admin">
+                        <div class=" ewave-history">
+                            <div class="ewave-dropdown ewave-history-dropdown">
+                                <a class="ewave-history-text" href="#tram-runtime-state"><i class="fa fa-history"></i><span>播放记录</span></a>
+                                <div class="ewave-dropdown-box ewave-history-box">
+                                    <div class="ewave-history-empty"><i class="fa fa-minus-circle"></i>&nbsp;暂无记录</div>
+                                </div>
+                            </div>
+                        </div>
+                        <input class="wb-switch" type="checkbox" data-tram-action="skin">
+                    </div>
+                </div>
+            </div>
+            
+            <div id="percentageCounter"></div>
+        </div>            
+            <div class=" container">
+                
+                <main class="site-main">
+                    {{#each sections}}<div class=" row">
+                        <div class=" col-md-9">
+                            <div class=" contpost gap">
+                                <div class="Hk4TDx index-vodlist">
+                                    <header class="clearfix">
+                                        <div class=" widget-list-title"><span>{{section.name}}</span></div>
+                                        <a class="header-more" href="{{section.path}}">更多&nbsp;<i class="fa fa-angle-right"></i></a>
+                                        <ul class="sub-type-list hidden-xs clearfix">{{#each section.children}}<li><a href="{{sub_category.path}}">{{sub_category.name}}</a></li>{{/each}}</ul>
+                                    </header>
+                                    <div class=" video-content">
+                                        <div class=" row movie-grid">
+                                            {{#each section.movies}}<div class=" col-xs-4 col-md-3">
+                                                <div class=" video-content-item">
+                                                    <article class="post-list video-list feaimg">
+                                                        <a class="video-img lazyload" href="{{movie.path}}" data-original="{{movie.poster_url}}" title="{{movie.title}}">
+                                                            <i class="mask"></i><span class="vodlist_top"><em class="voddate voddate_year">{{movie.year}}</em></span>
+                                                            <div class=" video-icon"><i class="fa fa-play-circle-o"></i></div>
+                                                            <header class="video-header text-center"><span class="video-title text-nowrap ml-xs-0 mr-xs-0">{{movie.remarks}}</span></header>
+                                                        </a>
+                                                    </article>
+                                                    <p class="video-name"><a class="text-overflow" href="{{movie.path}}" title="{{movie.title}}">{{movie.title}}</a></p>
+                                                    <p class="video-actor text-muted text-overflow">{{movie.actors}}</p>
+                                                </div>
+                                            </div>{{/each}}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class=" col-md-3 hidden-sm hidden-xs">
+                            <div class="gn54S8 widget-area">
+                                <section class="widget widget_kuaixun">
+                                    <h4 class="widget-title">{{section.rank_label}}</h4>
+
+                                    {{#each section.sidebar_movies}}<div class=" list-rounded my-n2">
+                                        <div class=" py-2">
+                                            <div class="ricon_rank {{movie.rank_class}}">{{movie.rank}}</div>
+                                            <div class=" ranking-item clearfix">
+                                                <div class=" ranking-item-cover"><a class="ewave-img-wrapper lazyload" href="{{movie.path}}" data-original="{{movie.poster_url}}" title="{{movie.title}}"></a></div>
+                                                <div class=" ranking-item-info">
+                                                    <h4><a class="text-overflow" href="{{movie.path}}" title="{{movie.title}}">{{movie.title}}</a></h4>
+                                                    <p class="ranking-actor text-muted">{{movie.actors}}</p>
+                                                    <p class="text-overflow text-muted">地区：{{movie.area}}</p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>{{/each}}
+                                    <ul>
+                                        {{#each section.sidebar_extra_movies}}<li class="ranking-text-item text-overflow"><em>{{movie.rank}}.</em><a href="{{movie.path}}" title="{{movie.title}}"><span class="pull-right text-muted">{{movie.remarks}}</span>{{movie.title}}</a></li>{{/each}}
+                                    </ul>
+                                </section>
+                            </div>
+                        </div>
+                    </div>{{/each}}
+                </main>
+            </div>
+            
+            
+            
+            <section class="tram-friend-links tram-friend-links-fallback" data-tram-friend-links="true" aria-label="友情链接"><h2>友情链接</h2><ul>{{#each friend_links}}<li><a href="{{friend_link.url}}" title="{{friend_link.text}}" target="_blank" rel="noopener noreferrer">{{friend_link.text}}</a></li>{{/each}}</ul></section><footer class="site-footer fsi">
+            <div class=" site-info clearfix">
+                <div class=" container text-center">
+                    <div class=" footer-l-top">
+                        <p><a href="{{url.list}}">排行榜</a><a href="{{url.list}}">最近更新</a></p>
+                        <p><small><a href="{{url.list}}" target="_blank">RSS</a><span class="separator">|</span><a href="{{url.list}}" target="_blank">百度地图</a><span class="separator">|</span><a href="{{url.list}}" target="_blank">神马地图</a><span class="separator">|</span><a href="{{url.list}}" target="_blank">搜狗地图</a><span class="separator">|</span><a href="{{url.list}}" target="_blank">360地图</a><span class="separator">|</span><a href="{{url.list}}" target="_blank">必应地图</a></small></p>
+                    </div>
+                    <div class=" footer-l-btm">
+                        <p>本网站只提供web页面服务，通过链接的方式提供相关内容（所有视频内容收集于各大视频网站），本站不对链接内容具有进行编辑、整理、修改等权利</p>
+                        <p>©copyright 2020-2026 {{site.name}} {{site.base_url}}</p>
+                        <p class="hide"></p>
+                        <p></p>
+                    </div>
+                </div>
+            </div>
+        </footer>
+        
+        <div class=" footer-fixed"><a href="#tram-runtime-state" id="scroll-to-top"><span class="fa fa-angle-up" title="返回顶部"></span></a><a class="dark-switch light" href="#tram-runtime-state" title="切换至亮色模式" data-tram-action="skin"><span class="fa fa-sun-o"></span></a><a class="dark-switch dark" href="#tram-runtime-state" title="切换至暗色模式" data-tram-action="skin"><span class="fa fa-moon-o"></span></a></div>
+        <div class=" mobile-overlay hidden-sm hidden-md hidden-lg"></div>        </div>
+    

@@ -1,0 +1,46 @@
+{
+  "schema_version": 2,
+  "slug": "yongliys-mobile",
+  "name": "Yongliys · 九七电影院",
+  "description": "Chuyển từ yongliys.com qua UA mobile, giữ đầy đủ bố cục năm trang và CSS/font/UI gốc. Phim, poster và đường dẫn lấy từ dữ liệu Trạm SEO.",
+  "author": "Trạm SEO",
+  "runtime": {
+    "profile": "ewave-original-v1",
+    "stylesheets": [
+      "default6/statics/css/ewave-plugins.css",
+      "default6/statics/css/ewave-ui.css",
+      "default6/statics/css/ewave-style.css",
+      "css/source-inline.css",
+      "default6/statics/js/layer_theme/default/layer.css"
+    ],
+    "scripts": [
+      "default6/statics/js/jquery.min.js",
+      "default6/statics/js/ewave-plugins.js",
+      "js/tram-imported-runtime.js"
+    ],
+    "view_scripts": {},
+    "view_stylesheets": {},
+    "icons": [
+      {
+        "rel": "shortcut icon",
+        "asset": "d02a42d9cb3dec9320e5f550278911c7.png",
+        "type": "image/png"
+      }
+    ],
+    "meta": [
+      {
+        "http-equiv": "Cache-Control",
+        "content": "no-transform"
+      },
+      {
+        "http-equiv": "Cache-Control",
+        "content": "no-siteapp"
+      },
+      {
+        "name": "renderer",
+        "content": "webkit"
+      }
+    ],
+    "viewport": "width=device-width,initial-scale=1,maximum-scale=1"
+  }
+}

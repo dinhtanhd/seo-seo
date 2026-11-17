@@ -1,0 +1,26 @@
+.overlay-off-navbar {position: fixed;top: 0;left: 0;right: 0;bottom: 0;z-index: 88888;display: none;}
+.page {
+        text-align: center;
+        line-height: 30px;
+    }
+    .page .page-unactive {
+        text-decoration: line-through;
+    }
+    .page a {
+        display: inline-block;
+        line-height: 30px;
+        background: #25252b;
+        min-width: 30px;
+        border-radius: 50px;
+        margin: 0 2px;
+    }
+    .page-first, .page-prev, .page-next, .page-last {
+        padding: 0 20px;
+    }
+   #page a {
+        color: hsl(0, 0%, 100%, .87);
+    }
+    .page .page-active {
+    background: #439b6b;
+    color: #fff;
+}

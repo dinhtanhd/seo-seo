@@ -1,0 +1,139 @@
+
+    <header class=" stui-header__top clearfix" id="header-top">
+        <div class=" container"><h1 class="fzhm-sr-only">{{seo.h1}}</h1>
+            <div class=" row">
+                <div class=" stui-header_bd clearfix">
+                    <div class=" stui-header__logo">
+                        <a class=" logo" href="{{url.home}}">{{site.name}}</a>
+                    </div>
+                    <div class=" stui-header__side">
+                        <ul class=" stui-header__user">
+                            <li>
+                                <a href="#fzhm-runtime-state" data-fzhm-action="history-toggle" aria-label="播放记录"><i class=" icon iconfont icon-clock"></i></a>
+                                <div class=" dropdown history">
+                                    <h5 class=" margin-0 text-muted">
+                                        <a class=" historyclean text-muted pull-right" href="#fzhm-runtime-state" data-fzhm-action="history-clear">清空</a>
+                                        播放记录
+                                    </h5>
+                                    <ul class=" clearfix" id="stui_history">
+                                    </ul>
+                                </div>
+                            </li>
+                        </ul>
+                        <div class=" stui-header__search"> 
+                            <form id="search" name="search" method="get" action="{{url.search}}">
+                                <input type="text" name="q" class=" mac_wd form-control" value="{{search.query}}" placeholder="请输入关键词..." maxlength="100" aria-label="搜索影片">
+                                <button class=" submit" id="searchbutton" type="submit"><i class=" icon iconfont icon-search"></i></button>
+                            </form>
+                          </div>
+                    </div>
+                    <ul class=" stui-header__menu type-slide"><li class=""><a href="{{url.home}}">首页</a></li>{{#each navigation}}<li class="{{#if nav_item.current}}active{{/if}}"><a href="{{nav_item.path}}">{{nav_item.name}}</a></li>{{/each}}</ul>
+                  </div>
+            </div>
+        </div>
+    </header>    
+    
+    <div class=" container">  
+        <div class=" row">
+            
+            <div class=" stui-pannel stui-pannel-bg clearfix">
+                <div class=" stui-pannel-box">
+                    
+                    <div class=" stui-pannel_bd">
+                        <div class=" carousel carousel_right col-pd clearfix">{{#each featured_movies}}<div class=" col-md-8 col-sm-5 col-xs-3 list">
+                                <div class=" stui-vodlist__box">
+                                    <a href="{{movie.path}}" class=" stui-vodlist__thumb lazyload" title="{{movie.title}}" data-original="{{movie.poster_url}}">
+                                        <span class=" play hidden-xs"></span>
+                                        <span class=" pic-text text-center">{{movie.remarks}}</span>
+                                    </a>
+                                </div>
+                            </div>{{/each}}</div>
+                    </div>
+                </div>
+            </div>            
+            
+        </div>
+        
+        <div class=" row">
+            {{#each category_sections}}<div class=" stui-pannel stui-pannel-bg clearfix">
+                <div class=" stui-pannel-box clearfix">
+                    
+                    <div class=" stui-pannel_bd clearfix">
+                        <div class=" col-lg-wide-75 col-xs-1 padding-0">
+                            
+                            <div class=" stui-pannel_hd">
+                                <div class=" stui-pannel__head active bottom-line clearfix">
+                                    <a class=" more text-muted pull-right" href="{{section.path}}">更多 <i class=" icon iconfont icon-more"></i></a>
+                                    <h3 class=" title">{{#if section.icon_url}}<img src="{{section.icon_url}}" alt="栏目">{{/if}}{{section.name}}</h3>
+                                </div>
+                            </div>
+                            
+                            <ul class=" stui-vodlist clearfix">{{#each section.movies}}<li class=" col-md-6 col-sm-4 col-xs-3">
+                                    <div class=" stui-vodlist__box">
+                                    <a class=" stui-vodlist__thumb lazyload" href="{{movie.path}}" title="{{movie.title}}" data-original="{{movie.poster_url}}">
+                                        <span class=" play hidden-xs"></span>
+                                        <span class=" pic-text text-right">{{movie.remarks}}</span>
+                                    </a>
+                                    <div class=" stui-vodlist__detail">
+                                        <h4 class=" title text-overflow"><a href="{{movie.path}}" title="{{movie.title}}">{{movie.title}}</a></h4>
+                                        <p class=" text text-overflow text-muted hidden-xs">{{movie.actors}}</p>
+                                    </div>
+                                </div>                                    
+                                </li>{{else}}<li class="col-pd text-muted">暂无已发布的影片。</li>{{/each}}</ul>
+                            
+                            <ul class=" stui-vodlist__text col-pd clearfix hidden-xs">{{#each section.extra_movies}}<li class=" col-md-4 col-sm-3 col-xs-1 padding-0">
+                                    <a class=" top-line-dot text-overflow" href="{{movie.path}}" title="{{movie.title}}">{{movie.title}}<span class="text-muted">{{movie.remarks}}</span></a>
+                                </li>{{else}}<li class="col-pd text-muted">暂无已发布的影片。</li>{{/each}}</ul>
+                        </div>
+                        
+                        <div class=" col-lg-wide-25 hidden-md hidden-sm hidden-xs">
+                            <div class=" stui-pannel_hd">
+                                <div class=" stui-pannel__head active bottom-line clearfix">
+                                    
+                                    <h3 class=" title"><img alt="栏目" src="{{asset.default3/assets/icon/icon_12.png}}">{{section.name}}{{section.rank_label}}</h3>
+                                </div>
+                            </div>
+                            
+                            <ul class=" stui-vodlist__text active col-pd clearfix">{{#each section.weekly_movies}}<li class=" bottom-line-dot">
+                                    <a href="{{movie.path}}" title="{{movie.title}}"><span class="text-muted pull-right">{{movie.remarks}}</span><span class="badge {{movie.rank_class}}">{{movie.rank}}</span>{{movie.title}}</a>
+                                </li>{{else}}<li class="col-pd text-muted">暂无已发布的影片。</li>{{/each}}</ul>
+                        </div>
+                    </div>
+                    
+                </div>
+            </div>{{/each}}
+
+        </div>
+        
+    </div>
+    
+    <div class=" container">
+        <div class=" row">
+            <section class="tram-friend-links tram-friend-links-fallback" data-tram-friend-links="true" aria-label="友情链接"><h2>友情链接</h2><ul>{{#each friend_links}}<li><a href="{{friend_link.url}}" title="{{friend_link.text}}" target="_blank" rel="noopener noreferrer">{{friend_link.text}}</a></li>{{/each}}</ul></section><div class=" stui-foot clearfix">
+                <div class=" col-pd text-center hidden-xs">Copyright <span class=" fontArial"> </span> 2021-2026 <a href="{{url.home}}">{{site.name}}</a> Inc. All Rights Reserved.</div>
+                <p class=" share bdsharebuttonbox text-center margin-0 hidden-sm hidden-xs"></p>            
+                <p class=" text-muted text-center visible-xs">Copyright © 2021-2026 {{site.name}}</p>
+            </div>
+        </div>
+    </div>
+    <ul class=" stui-extra clearfix">
+        <li>
+            <a class=" backtop" href="#fzhm-runtime-state" style="display: none;" data-fzhm-action="top" aria-label="返回顶部"><i class=" icon iconfont icon-less"></i></a>
+        </li>
+        <li class=" hidden-xs">
+            <a class=" copylink" href="#fzhm-runtime-state" data-fzhm-action="copy" aria-label="复制链接"><i class=" icon iconfont icon-share"></i></a>
+        </li>
+        <li class=" visible-xs">
+            <a class=" open-share" href="#fzhm-runtime-state" data-fzhm-action="share" aria-label="分享"><i class=" icon iconfont icon-share"></i></a>
+        </li>
+        <li class=" hidden-xs">
+            <span><i class=" icon iconfont icon-qrcode"></i></span>
+            <div class=" sideslip">
+                <div class=" col-pd">
+                    <p id="qrcode"></p>
+                    <p class=" text-center font-12">扫码用手机访问</p>
+                </div>
+            </div>
+        </li>
+    </ul>    
+<div id="fzhm-runtime-state" hidden data-title="{{content.title}}" data-page-url="{{page.canonical_url}}" data-episode-title="{{player.title}}" data-play-url="{{player.play_url}}" data-source-url="{{player.source_url}}" data-can-play="{{player.can_play}}" data-poster-url="{{content.poster_url}}"></div>

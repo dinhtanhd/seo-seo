@@ -1,0 +1,8 @@
+.tram-theme-sr-only{position:absolute!important;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+
+/* Tram SEO friend links */
+.tram-friend-links{display:block!important;clear:both;box-sizing:border-box;text-align:left}.tram-friend-links h2,.tram-friend-links h3,.tram-friend-links h4,.tram-friend-links h5{color:inherit!important}.tram-friend-links h2,.tram-friend-links h3{font-size:16px;line-height:1.5}.tram-friend-links ul,.tram-friend-links ol{display:flex;flex-wrap:wrap;gap:8px 20px;list-style:none;margin:0;padding:0}.tram-friend-links li{float:none!important;width:auto!important;max-width:100%;margin:0;padding:0!important;list-style:none}.tram-friend-links a{display:inline-block;white-space:normal;overflow-wrap:anywhere;word-break:break-word;line-height:1.7}.tram-friend-links-fallback{max-width:1400px;margin:24px auto;padding:16px 20px;border-top:1px solid currentColor}.tram-friend-links-fallback h2{margin:0 0 12px}.tram-friend-links-fallback a{font-size:14px}@media(max-width:640px){.tram-friend-links-fallback{margin:18px 12px;padding:14px 4px}.tram-friend-links ul,.tram-friend-links ol{gap:6px 16px}}
+
+/* Trạm SEO: balanced movie rows retain native column widths. */
+[data-tram-section-layout="balanced"] .video-content > .row.movie-grid{display:flex;flex-wrap:wrap}
+[data-tram-section-layout="balanced"] .video-content > .row.movie-grid > .col-xs-4{float:none}
