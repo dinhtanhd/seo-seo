@@ -1,0 +1,114 @@
+location = /__tram_public_cache_policy {
+    internal;
+    fastcgi_buffer_size 16k;
+    fastcgi_buffers 8 16k;
+    auth_request off;
+    fastcgi_pass @PHP_UPSTREAM@;
+    fastcgi_pass_request_body off;
+    fastcgi_param SCRIPT_FILENAME @ROOT@/application/public/index.php;
+    fastcgi_param SCRIPT_NAME /index.php;
+    fastcgi_param REQUEST_METHOD GET;
+    fastcgi_param REQUEST_URI /;
+    fastcgi_param QUERY_STRING "";
+    fastcgi_param HTTPS $https if_not_empty;
+    fastcgi_param SERVER_PROTOCOL $server_protocol;
+    fastcgi_param GATEWAY_INTERFACE CGI/1.1;
+    fastcgi_param SERVER_SOFTWARE nginx;
+    fastcgi_param REMOTE_ADDR $remote_addr;
+    fastcgi_param REMOTE_PORT $remote_port;
+    fastcgi_param SERVER_ADDR $server_addr;
+    fastcgi_param SERVER_PORT $server_port;
+    fastcgi_param SERVER_NAME $host;
+    fastcgi_param HTTP_HOST $http_host;
+    fastcgi_param HTTP_PROXY "";
+    fastcgi_param ADMIN_HOSTS @DOMAIN@;
+    fastcgi_param CONTENT_LENGTH "";
+    fastcgi_param TRAM_PUBLIC_CACHE_POLICY_REQUEST 1;
+    fastcgi_param TRAM_REQUEST_POLICY_ROOT @ROOT@/application/storage/app/public-html;
+    fastcgi_param TRAM_REQUEST_POLICY_DATABASE $tram_cache_database;
+    fastcgi_param TRAM_PUBLIC_CACHE_POLICY_PATH $tram_public_cache_path;
+}
+
+location = /__tram_public_html_cache/advertising {
+    internal;
+    auth_request /__tram_public_cache_policy;
+    auth_request_set $tram_public_plain_csp $upstream_http_x_tram_public_plain_csp;
+    auth_request_set $tram_public_runtime_csp $upstream_http_x_tram_public_runtime_csp;
+    auth_request_set $tram_public_policy_cache $upstream_http_x_tram_policy_cache;
+    error_page 403 =421 @tram_domain_denied;
+    root @ROOT@/application/storage/app/public-html;
+    fastcgi_buffer_size 16k;
+    fastcgi_buffers 8 16k;
+    fastcgi_intercept_errors on;
+    error_page 404 = @tram_public_html_cache_miss;
+    include /www/server/nginx/conf/fastcgi_params;
+    fastcgi_param HTTPS $https if_not_empty;
+    fastcgi_param SCRIPT_FILENAME @ROOT@/application/bootstrap/serve-html-cache.php;
+    fastcgi_param HTTP_PROXY "";
+    fastcgi_param ADMIN_HOSTS @DOMAIN@;
+    fastcgi_param TRAM_PUBLIC_HTML_CACHE_REQUEST 1;
+    fastcgi_param TRAM_PUBLIC_HTML_CACHE_ROOT $document_root;
+    fastcgi_param TRAM_PUBLIC_HTML_CACHE_DATABASE $tram_cache_database;
+    fastcgi_param TRAM_PUBLIC_HTML_CACHE_HOST $host;
+    fastcgi_param TRAM_PUBLIC_HTML_CACHE_FILE $tram_public_advertising_cache_file;
+    fastcgi_pass @PHP_UPSTREAM@;
+    fastcgi_read_timeout 65s;
+    types { }
+    default_type text/html;
+    charset utf-8;
+    sendfile on;
+    open_file_cache off;
+    etag off;
+    if_modified_since off;
+    max_ranges 0;
+    add_header Cache-Control no-store always;
+    add_header Vary User-Agent always;
+    add_header X-Tram-Cache HIT;
+    add_header X-Content-Type-Options nosniff always;
+    add_header Referrer-Policy strict-origin-when-cross-origin always;
+    add_header Strict-Transport-Security $tram_public_hsts always;
+    add_header Content-Security-Policy $tram_public_plain_csp always;
+    add_header X-Tram-Policy-Cache $tram_public_policy_cache;
+}
+
+location = /__tram_public_runtime_html_cache/advertising {
+    internal;
+    auth_request /__tram_public_cache_policy;
+    auth_request_set $tram_public_plain_csp $upstream_http_x_tram_public_plain_csp;
+    auth_request_set $tram_public_runtime_csp $upstream_http_x_tram_public_runtime_csp;
+    auth_request_set $tram_public_policy_cache $upstream_http_x_tram_policy_cache;
+    error_page 403 =421 @tram_domain_denied;
+    root @ROOT@/application/storage/app/public-html;
+    fastcgi_buffer_size 16k;
+    fastcgi_buffers 8 16k;
+    fastcgi_intercept_errors on;
+    error_page 404 = @tram_public_html_cache_miss;
+    include /www/server/nginx/conf/fastcgi_params;
+    fastcgi_param HTTPS $https if_not_empty;
+    fastcgi_param SCRIPT_FILENAME @ROOT@/application/bootstrap/serve-html-cache.php;
+    fastcgi_param HTTP_PROXY "";
+    fastcgi_param ADMIN_HOSTS @DOMAIN@;
+    fastcgi_param TRAM_PUBLIC_HTML_CACHE_REQUEST 1;
+    fastcgi_param TRAM_PUBLIC_HTML_CACHE_ROOT $document_root;
+    fastcgi_param TRAM_PUBLIC_HTML_CACHE_DATABASE $tram_cache_database;
+    fastcgi_param TRAM_PUBLIC_HTML_CACHE_HOST $host;
+    fastcgi_param TRAM_PUBLIC_HTML_CACHE_FILE $tram_public_runtime_advertising_cache_file;
+    fastcgi_pass @PHP_UPSTREAM@;
+    fastcgi_read_timeout 65s;
+    types { }
+    default_type text/html;
+    charset utf-8;
+    sendfile on;
+    open_file_cache off;
+    etag off;
+    if_modified_since off;
+    max_ranges 0;
+    add_header Cache-Control no-store always;
+    add_header Vary User-Agent always;
+    add_header X-Tram-Cache HIT;
+    add_header X-Content-Type-Options nosniff always;
+    add_header Referrer-Policy strict-origin-when-cross-origin always;
+    add_header Strict-Transport-Security $tram_public_hsts always;
+    add_header Content-Security-Policy $tram_public_runtime_csp always;
+    add_header X-Tram-Policy-Cache $tram_public_policy_cache;
+}

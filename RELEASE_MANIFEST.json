@@ -1,12 +1,12 @@
 {
-  "created_at": "2026-11-17T19:13:54+07:00",
-  "source_commit": "57ab7d72d0287c5fa6a9a63cfd071489042cb041",
+  "created_at": "2026-11-17T19:35:40+07:00",
+  "source_commit": "4208f1a8f53e4b29567b2a59c27f0e4ffbe4389c",
   "includes_untracked_runtime_code": true,
   "database_included": false,
   "runtime_env_and_secret_files_included": false,
   "historical_public_build_included": true,
   "ai_instructions_and_development_docs_included": false,
-  "file_count": 831,
+  "file_count": 832,
   "files_sha256": {
     "application/.env.example": "29061ff27cd912caaf0845aa53ab8b6cc22b0d8b6e3e68988dab03de18a80d19",
     "application/.npmrc": "e968d1d336604e9986ea31306a4d9e1442f4312fca262f444384baf928d6560e",
@@ -831,12 +831,13 @@
     "application/vite.fanmulu.config.js": "1aa50ad38c74a1f80c4e117091fc7009739c32002a5c593f270c27a5969e4bb8",
     "application/vite.player.config.js": "e92da5e0472f6837cf1a0c0d0cf72ba3f0b3c0038477220a65e72c497d762c1f",
     "infra/baota/nginx-site.conf.template": "27fadd713949127c8d20e633aa5975ef369f1ce16353f8598a564e5a779c95a6",
-    "infra/baota/public-html-cache-location.conf.template": "6a39d687bf646eafd66ced829f9bb8a58ed6f6e403c1bd3ad205429b05ac53d6",
+    "infra/baota/public-html-cache-location.conf.template": "1834f30acf53dc8a5dc7c27de86fcf365ef1e43a0fd0919126b0d3f7600cd42b",
+    "infra/baota/public-html-cache-policy.conf.template": "1048a01907aa08f29554156e3682740311d64eeabf8e474606e3b93db10a3345",
     "infra/nginx/public-html-cache.conf": "794bf1679b46f1dbaa282eb61fcd19341f8651bb1b815a600fec7060b397b3e4",
     "install.sh": "83f739b815b4dc9b310d4dc6d471174e2e1d312a102fb1263fd3563a16ec2e72",
-    "scripts/baota-config.py": "a6f6cf5f812e145d2afcadae239a51bb8b179a80ec8388e6b82c9a273c416444",
+    "scripts/baota-config.py": "3cf30b19c40b51364b74dab558fcca2d2f88c303099c35014df46409cfa85ddc",
     "scripts/baota-preservation.py": "17eaccb2c9cdc78a86a20d06c69d8816d680c85eda5d96f0f5ff2baf491d54d8",
-    "scripts/install-baota": "9016f8953f9688094483f5f2983450e6e20bbd53b4b9f8ebba96359dc23a865b",
+    "scripts/install-baota": "0390fd89b9ce867738e6a0a255406fc6f0e87e66e2bcc43fcca64a8b4ec44573",
     "scripts/install-from-git": "295e30e3612c090f5f47cadac197e74791324aa2bdaa767e59acb030e8bdc9e0",
     ".gitignore": "98c4b6af8d61943ecdccc3f43a9225d07427dc6ea50ef7d8d2bc476b82ae36fa"
   }

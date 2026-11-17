@@ -69,7 +69,12 @@ PY
 PHP=$PHP_ROOT/bin/php
 NGINX=/www/server/nginx/sbin/nginx
 [[ -x $PHP && -x $PHP_ROOT/sbin/php-fpm && -x $NGINX ]] || fail 'Cài Nginx và PHP 8.4 trong Software Store của BaoTa.'
-"$NGINX" -V 2>&1 | grep -q -- http_auth_request_module || fail 'Nginx BaoTa cần module http_auth_request để chạy cache PHP.'
+NGINX_BUILD=$("$NGINX" -V 2>&1) || fail 'Không đọc được thông tin bản Nginx BaoTa.'
+NGINX_OPTIONS=()
+if [[ $NGINX_BUILD != *--with-http_auth_request_module* ]]; then
+    NGINX_OPTIONS+=(--without-auth-request)
+    printf '%s\n' 'Nginx BaoTa thiếu auth_request. Cache HTML thường vẫn chạy qua PHP. Trang có quảng cáo dùng Laravel.'
+fi
 "$PHP" -r '
 $missing = [];
 foreach (["pdo_pgsql","intl","mbstring","dom","xml","zip","pcntl","bcmath","redis","curl","fileinfo","ctype","openssl","session","tokenizer","Zend OPcache"] as $ext) {
@@ -260,7 +265,8 @@ if [[ -f $CONF/nginx/public-html-cache-location.conf ]]; then
     cp -p "$CONF/nginx/public-html-cache-location.conf" "$BUILD/cache-include-before-install.conf"
 fi
 python3 "$ROOT/scripts/baota-config.py" --root "$ROOT" --domain "$DOMAIN" --public-hosts "$PUBLIC_HOSTS" \
-    --php-root "$PHP_ROOT" --php-upstream "$PHP_UPSTREAM" --connections-file "$CONF/connections.env" --tls-cert "$TLS_CERT" --tls-key "$TLS_KEY" --output "$CONF"
+    --php-root "$PHP_ROOT" --php-upstream "$PHP_UPSTREAM" --connections-file "$CONF/connections.env" --tls-cert "$TLS_CERT" --tls-key "$TLS_KEY" --output "$CONF" \
+    "${NGINX_OPTIONS[@]}"
 cp "$ROOT/application/.env" "$CONF/env-before-install"
 install -m 0600 -o www -g www "$CONF/application.env" "$ROOT/application/.env"
 chown www:www /var/log/tram-seo

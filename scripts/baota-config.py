@@ -179,6 +179,7 @@ def main():
     parser.add_argument('--detect-fpm', action='store_true')
     parser.add_argument('--php-pool', default='')
     parser.add_argument('--php-upstream')
+    parser.add_argument('--without-auth-request', action='store_true')
     parser.add_argument('--connections-file', type=Path)
     parser.add_argument('--tls-cert', default='')
     parser.add_argument('--tls-key', default='')
@@ -240,10 +241,27 @@ def main():
     tls = ''
     if args.tls_cert:
         tls = f'listen 443 ssl;\n    ssl_certificate {args.tls_cert};\n    ssl_certificate_key {args.tls_key};\n    ssl_protocols TLSv1.2 TLSv1.3;'
-    replacements = {'@ROOT@': root, '@DOMAIN@': args.domain, '@SERVER_NAMES@': ' '.join(hosts),
+    nginx_templates = args.root / 'infra/baota'
+    if args.without_auth_request:
+        # Keep requests to the disabled internal endpoints out of public routing.
+        policy_locations = ('location = /__tram_public_cache_policy { return 404; }\n'
+                            'location = /__tram_public_html_cache/advertising { return 404; }\n'
+                            'location = /__tram_public_runtime_html_cache/advertising { return 404; }')
+        auth_off = ''
+        # Enter the named Laravel location directly, preserving the original URI/method.
+        # Going via /index.php would retry the advertising projection and loop.
+        advertising_redirects = 'error_page 419 420 = @tram_public_html_cache_miss;'
+    else:
+        policy_locations = (nginx_templates / 'public-html-cache-policy.conf.template').read_text().rstrip()
+        auth_off = '    auth_request off;'
+        advertising_redirects = ('error_page 419 = /__tram_public_html_cache/advertising;\n'
+                                 '    error_page 420 = /__tram_public_runtime_html_cache/advertising;')
+    replacements = {'@CACHE_POLICY_LOCATIONS@': policy_locations, '@CACHE_AUTH_OFF@': auth_off,
+                    '@CACHE_ADVERTISING_REDIRECTS@': advertising_redirects,
+                    '@ROOT@': root, '@DOMAIN@': args.domain, '@SERVER_NAMES@': ' '.join(hosts),
                     '@PHP_UPSTREAM@': upstream, '@DB_NAME@': connections['DB_DATABASE'], '@TLS_DIRECTIVES@': tls}
     for name in ('nginx-site.conf', 'public-html-cache-location.conf'):
-        content = (args.root / 'infra/baota' / (name + '.template')).read_text()
+        content = (nginx_templates / (name + '.template')).read_text()
         for token, value in replacements.items():
             content = content.replace(token, value)
         if re.search(r'@[A-Z_]+@', content):
