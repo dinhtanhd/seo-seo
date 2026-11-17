@@ -1,0 +1,80 @@
+{
+  "format": "tram-seo-data-age-v1",
+  "chunks": [
+    {
+      "name": "bundle.age.part000000",
+      "bytes": 50331648,
+      "sha256": "49019d9f1c97f84e5e95a16e5c672ad56928ccd866d391be65170d46745c100e"
+    },
+    {
+      "name": "bundle.age.part000001",
+      "bytes": 50331648,
+      "sha256": "16a57dec2e6b490757bbab95104fe6e6682686ec13f31cac8ad012e29c995078"
+    },
+    {
+      "name": "bundle.age.part000002",
+      "bytes": 50331648,
+      "sha256": "087a7879a5c4d6906d98ae8d232c91ff49f750a01eaa4255ac100b4d08d0bb6c"
+    },
+    {
+      "name": "bundle.age.part000003",
+      "bytes": 50331648,
+      "sha256": "c8e3d8eca3c6e03df01b1019983d61f05b00cb81306983ba2c827c5fed8672e0"
+    },
+    {
+      "name": "bundle.age.part000004",
+      "bytes": 50331648,
+      "sha256": "e9e070ff8a9d5331d570a2abb7dee9da5d8e34c263cb767916215d6a71737f68"
+    },
+    {
+      "name": "bundle.age.part000005",
+      "bytes": 50331648,
+      "sha256": "1efdccd023e7663d3c0e8fba65a73b94e36caa6ea930c96b2ae565469994472d"
+    },
+    {
+      "name": "bundle.age.part000006",
+      "bytes": 50331648,
+      "sha256": "4175c0240a0b873581c3b5dca6f72e715f082f5a2bd5336ff81ab334f493b8a1"
+    },
+    {
+      "name": "bundle.age.part000007",
+      "bytes": 50331648,
+      "sha256": "b488bdcc8179c4d291dd27c7ab241fa9caeed95e5f24012906d868d7808d3da1"
+    },
+    {
+      "name": "bundle.age.part000008",
+      "bytes": 50331648,
+      "sha256": "ac7eef65407093d6c0ac6275230ee5879e1d2e2747c8938c1b52bce003b632d3"
+    },
+    {
+      "name": "bundle.age.part000009",
+      "bytes": 50331648,
+      "sha256": "23f47b95442cfe3b28e00f3ab483a452604326b262da84eb9718be01a0080022"
+    },
+    {
+      "name": "bundle.age.part000010",
+      "bytes": 50331648,
+      "sha256": "4476d3c9a2d0d28418eea272e86fa1c60973c3789e29bd25a5719f1e176f1944"
+    },
+    {
+      "name": "bundle.age.part000011",
+      "bytes": 50331648,
+      "sha256": "9e6db3d624e9bc54f3415541f0a5ae7274a74c8d73fa4e033dcb2eb8b7f43806"
+    },
+    {
+      "name": "bundle.age.part000012",
+      "bytes": 50331648,
+      "sha256": "a8dca75b598777892152fbcf3bad2c4920c0d7064da1cedcbea835e38a6f5797"
+    },
+    {
+      "name": "bundle.age.part000013",
+      "bytes": 50331648,
+      "sha256": "422fb5eb3d92a6e574351aa6fb35332e4b6c70819cc003be7035b55344a57d0f"
+    },
+    {
+      "name": "bundle.age.part000014",
+      "bytes": 18973428,
+      "sha256": "04ada84055436ea334313a998893f44f86bbfb58a7383363d78548b6a9474b87"
+    }
+  ]
+}
